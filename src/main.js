@@ -92,7 +92,7 @@ function render(now){
  const compress=over?Math.min(Math.sqrt(over*6),120):0;
  const shown=lo<layout.bigMin?layout.bigMin-compress:lo>layout.bigMax?layout.bigMax+compress:lo;
  const tn=clamp(tilt/100,-5,5),rot=tn*48,origin=clamp(.5-tn*.35,0,1);
- L.style.transform=R.style.transform='perspective(1100px) rotateY('+rot+'deg)';
+ L.style.transform=R.style.transform='rotateY('+rot+'deg)';
  L.style.transformOrigin=R.style.transformOrigin=(origin*100)+'% 50%';
  for(const el of L.querySelectorAll('.card')){
   const i=+el.dataset.i,row=orders[0].indexOf(i);if(row<0)continue;
