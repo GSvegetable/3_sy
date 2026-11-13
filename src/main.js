@@ -19,7 +19,7 @@ const orders=[C.map((_,i)=>i).filter(i=>i%2===0),C.map((_,i)=>i).filter(i=>i%2==
 const flipped=new Set(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),mod=(v,m)=>((v%m)+m)%m;
 let preset=0,peak=-282,curve=45,tilt=95,anim=null,animAt=0;
 let lo=0,ro=0,lv=0,rv=0,lt=0,rt=0,ld=false,rd=false,lp=NaN,rp=NaN;
-let layout=null,gesture=null,lastFrame=0,raf=0,lastLS=0,lastRS=0;
+let layout=null,gesture=null,cardHold=null,lastFrame=0,raf=0,lastLS=0,lastRS=0;
 
 function measure(){
  const h=stage.clientHeight,w=stage.clientWidth,b=orders[0].length,s=orders[1].length;
@@ -37,6 +37,7 @@ function html(i,side,copy){
 function bind(el){
  const i=+el.dataset.i;
  if(flipped.has(i))el.classList.add('flipped');
+ el.addEventListener('pointerdown',e=>cardDown(e,el));
  el.addEventListener('click',()=>{
   if(el.dataset.dragged==='1'){el.dataset.dragged='0';return;}
   if(flipped.has(i))flipped.delete(i);else flipped.add(i);
@@ -99,7 +100,7 @@ function render(now){
  }
 }
 function apply(el,g){
- el.style.transform='translate3d('+g.x+'px,'+g.y+'px,0) scale('+g.scale+')';
+ el.style.transform='translate3d('+g.x+'px,'+g.y+'px,0) scale('+g.scale+')'+(el.classList.contains('normal')?' rotateY(-8deg)':'');
  el.style.opacity=String(g.alpha);el.style.zIndex=String(Math.round(g.z));
 }
 function down(e){
@@ -128,15 +129,47 @@ function up(e){
  hapticRelease(clamp(Math.abs(gesture.side==='left'?lv:rv)/MAXV,0,1));gesture=null;
 }
 stage.addEventListener('pointerdown',down);
-stage.addEventListener('pointermove',move);
-stage.addEventListener('pointerup',up);
-stage.addEventListener('pointercancel',up);
+stage.addEventListener('pointermove',e=>{move(e);cardMove(e);});
+stage.addEventListener('pointerup',e=>{up(e);cardUp(e);});
+stage.addEventListener('pointercancel',e=>{up(e);cardUp(e);});
 stage.addEventListener('wheel',e=>{
  e.preventDefault();
  if(e.clientX<layout.w/2){lo+=e.deltaY;lt=lo;}else{ro+=e.deltaY;rt=ro;}
 },{passive:false});
+
+function cardDown(e,el){
+ if(e.button!==undefined&&e.button!==0)return;
+ const rect=el.getBoundingClientRect(),g={id:e.pointerId,el,index:+el.dataset.i,side:el.classList.contains('gold')?'left':'right',x:e.clientX,y:e.clientY,rect,moved:false,active:false,timer:0};
+ cardHold=g;
+ g.timer=setTimeout(()=>{
+  if(cardHold!==g||g.moved)return;
+  g.active=true;el.classList.add('is-dragging');el.style.position='fixed';
+  el.style.left=rect.left+'px';el.style.top=rect.top+'px';el.style.transform='translate3d(0,0,0)';hapticTick(1);
+ },400);
+ el.setPointerCapture?.(e.pointerId);
+}
+function cardMove(e){
+ const g=cardHold;if(!g||g.id!==e.pointerId)return;
+ const dx=e.clientX-g.x,dy=e.clientY-g.y;
+ if(Math.hypot(dx,dy)>8&&!g.active){g.moved=true;clearTimeout(g.timer);}
+ if(g.active){g.el.style.transform='translate3d('+dx+'px,'+dy+'px,0)';e.preventDefault();}
+}
+function cardUp(e){
+ const g=cardHold;if(!g||g.id!==e.pointerId)return;
+ clearTimeout(g.timer);
+ if(g.active){
+  const x1=PAD+peak+W/2,x2=x1+W+GAP;
+  const target=Math.abs(e.clientX-x1)<=Math.abs(e.clientX-x2)?0:1;
+  orders[g.side==='left'?0:1]=orders[g.side==='left'?0:1].filter(i=>i!==g.index);
+  if(!orders[target].includes(g.index))orders[target].push(g.index);
+  orders[0].sort((a,b)=>a-b);orders[1].sort((a,b)=>a-b);
+  flipped.delete(g.index);measure();build();
+ }else if(g.moved)g.el.dataset.dragged='1';
+ cardHold=null;
+}
+
 function frame(now){
- const dt=lastFrame?Math.min(40,now-lastFrame):16.667;lastFrame=now,fr=Math.pow(.96,dt/16.667);
+ const dt=lastFrame?Math.min(40,now-lastFrame):16.667;lastFrame=now;const fr=Math.pow(.96,dt/16.667);
  if(!ld){lo+=lv*dt/16.667;lv*=fr;if(Math.abs(lv)<.15)lv=0;}
  if(!rd){ro+=rv*dt/16.667;rv*=fr;if(Math.abs(rv)<.15)rv=0;}
  const ls=Math.trunc(lo/STEP),rs=Math.trunc(ro/STEP);
