@@ -9,7 +9,7 @@
 import './style.css';
 import { CARD_CONTENTS, PRESETS } from './data.js';
 import { findBestMatch } from './search.js';
-import { createLayout, clamp, mod } from './layout.js';
+import { createLayout, clamp } from './layout.js';
 import { Scene } from './scene.js';
 import { attachGestures } from './input.js';
 import { hapticTick, hapticRelease, hapticReverse, watchTilt } from './effects.js';
