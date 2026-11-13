@@ -14,13 +14,15 @@ const C=[
 ].map(([tag,title,subtitle,pinyinFull,pinyinAbbr])=>({tag,title,subtitle,pinyinFull,pinyinAbbr}));
 const P=[{peak:-282,curve:45,tilt:95},{peak:21.5,curve:16,tilt:65},{peak:735,curve:14,tilt:-65}];
 const W=150,H=132,GAP=-24,PAD=58,STEP=72,FOCUS=.42,MAXV=55;
-const stage=document.querySelector('#stage'),L=document.querySelector('#railLeft'),R=document.querySelector('#railRight');\nconst searchToggle=document.querySelector('#searchToggle'),searchInput=document.querySelector('#searchInput');
+const stage=document.querySelector('#stage'),L=document.querySelector('#railLeft'),R=document.querySelector('#railRight');
+const searchToggle=document.querySelector('#searchToggle'),searchInput=document.querySelector('#searchInput');
 const orders=[C.map((_,i)=>i).filter(i=>i%2===0),C.map((_,i)=>i).filter(i=>i%2===1)];
 const flips=new Map(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),mod=(v,m)=>((v%m)+m)%m;
 let preset=0,peak=-282,curve=45,tilt=95,anim=null,animAt=0;
 let lo=0,ro=0,lv=0,rv=0,lt=0,rt=0,ld=false,rd=false,lp=NaN,rp=NaN;
 let leftDeltaLow=0,rightDeltaLow=0,prevLo=0,prevRo=0,leftSpringV=0;
-let layout=null,gesture=null,cardHold=null,lastFrame=0,raf=0,lastLS=0,lastRS=0;\nlet searchMotion=null,searchHighlight=-1,searchHighlightUntil=0,searchTimer=0,sensorTilt=0;
+let layout=null,gesture=null,cardHold=null,lastFrame=0,raf=0,lastLS=0,lastRS=0;
+let searchMotion=null,searchHighlight=-1,searchHighlightUntil=0,searchTimer=0,sensorTilt=0;
 
 function measure(){
  const h=stage.clientHeight,w=stage.clientWidth,b=orders[0].length,s=orders[1].length;
@@ -187,7 +189,8 @@ function cardUp(e){
 
 function frame(now){
  const dt=lastFrame?Math.min(40,now-lastFrame):16.667;lastFrame=now;
- const frameScale=dt/16.667,fr=Math.pow(.96,frameScale);\n if(searchMotion){const t=clamp((now-searchMotion.started)/600,0,1),e=1-Math.pow(1-t,3),v=searchMotion.start+(searchMotion.target-searchMotion.start)*e;if(searchMotion.side==='left'){lo=v;lt=v;lv=0;}else{ro=v;rt=v;rv=0;}if(t>=1)searchMotion=null;}
+ const frameScale=dt/16.667,fr=Math.pow(.96,frameScale);
+ if(searchMotion){const t=clamp((now-searchMotion.started)/600,0,1),e=1-Math.pow(1-t,3),v=searchMotion.start+(searchMotion.target-searchMotion.start)*e;if(searchMotion.side==='left'){lo=v;lt=v;lv=0;}else{ro=v;rt=v;rv=0;}if(t>=1)searchMotion=null;}
  if(ld)lo+=(lt-lo)*.95;else{lo+=lv*frameScale;lv*=fr;if(Math.abs(lv)<.15)lv=0;}
  if(rd)ro+=(rt-ro)*.95;else{ro+=rv*frameScale;rv*=fr;if(Math.abs(rv)<.15)rv=0;}
  const rawLeftDelta=lo-prevLo,rawRightDelta=ro-prevRo;prevLo=lo;prevRo=ro;
@@ -218,5 +221,10 @@ function frame(now){
 }
 function resize(){measure();build();render(performance.now());}
 measure();build();render(performance.now());raf=requestAnimationFrame(frame);
-addEventListener('resize',resize);\nfunction normalizeSearch(s){return s.toLowerCase().replace(/[^a-z0-9\\u4e00-\\u9fff]/g,'');}\nfunction findSearchMatch(raw){const q=normalizeSearch(raw);if(!q)return -1;let best=-1,bestScore=0;for(let i=0;i<C.length;i++){const c=C[i],fields=[c.title,normalizeSearch(c.pinyinFull),normalizeSearch(c.pinyinAbbr)];for(let k=0;k<fields.length;k++){const v=fields[k];if(!v)continue;let score=0;if(v===q)score=100-k*3;else if(v.startsWith(q))score=75-k*3;else if(v.includes(q))score=50-k*3;if(score>bestScore){bestScore=score;best=i;}}}return best;}\nfunction searchFor(raw){const i=findSearchMatch(raw);if(i<0)return;const side=i%2===0?'left':'right',row=orders[side==='left'?0:1].indexOf(i);if(row<0)return;const target=row*STEP-layout.h*FOCUS+H/2;searchMotion={side,start:side==='left'?lo:ro,target,started:performance.now()};searchHighlight=i;searchHighlightUntil=performance.now()+1600;}\nif(searchToggle&&searchInput){searchToggle.addEventListener('click',()=>{searchInput.classList.toggle('open');if(searchInput.classList.contains('open'))searchInput.focus();else{searchInput.value='';searchHighlight=-1;}});searchInput.addEventListener('input',()=>{clearTimeout(searchTimer);const value=searchInput.value;searchTimer=setTimeout(()=>searchFor(value),200);});searchInput.addEventListener('keydown',e=>{if(e.key==='Escape'){searchInput.value='';searchInput.classList.remove('open');searchHighlight=-1;searchInput.blur();}});}\naddEventListener('deviceorientation',e=>{if(typeof e.gamma==='number')sensorTilt=clamp(e.gamma/45,-1,1);},{passive:true});
+addEventListener('resize',resize);
+function normalizeSearch(s){return s.toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g,'');}
+function findSearchMatch(raw){const q=normalizeSearch(raw);if(!q)return -1;let best=-1,bestScore=0;for(let i=0;i<C.length;i++){const c=C[i],fields=[c.title,normalizeSearch(c.pinyinFull),normalizeSearch(c.pinyinAbbr)];for(let k=0;k<fields.length;k++){const v=fields[k];if(!v)continue;let score=0;if(v===q)score=100-k*3;else if(v.startsWith(q))score=75-k*3;else if(v.includes(q))score=50-k*3;if(score>bestScore){bestScore=score;best=i;}}}return best;}
+function searchFor(raw){const i=findSearchMatch(raw);if(i<0)return;const side=i%2===0?'left':'right',row=orders[side==='left'?0:1].indexOf(i);if(row<0)return;const target=row*STEP-layout.h*FOCUS+H/2;searchMotion={side,start:side==='left'?lo:ro,target,started:performance.now()};searchHighlight=i;searchHighlightUntil=performance.now()+1600;}
+if(searchToggle&&searchInput){searchToggle.addEventListener('click',()=>{searchInput.classList.toggle('open');if(searchInput.classList.contains('open'))searchInput.focus();else{searchInput.value='';searchHighlight=-1;}});searchInput.addEventListener('input',()=>{clearTimeout(searchTimer);const value=searchInput.value;searchTimer=setTimeout(()=>searchFor(value),200);});searchInput.addEventListener('keydown',e=>{if(e.key==='Escape'){searchInput.value='';searchInput.classList.remove('open');searchHighlight=-1;searchInput.blur();}});}
+addEventListener('deviceorientation',e=>{if(typeof e.gamma==='number')sensorTilt=clamp(e.gamma/45,-1,1);},{passive:true});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(raf);lastFrame=0;}else raf=requestAnimationFrame(frame);});
