@@ -1,5 +1,11 @@
 # 3_sy — Android 双轨卡片空间的 Web 移植
 
+## v0.7.0 — 校准原生 3D 摄像机距离
+
+- Android 轨道容器的 `graphicsLayer` 使用 `cameraDistance = 8f * density`；此前 Web 端给整个轨道使用 `perspective(1100px)`，与原生相机距离相差很大。
+- 将 3D 透视放到舞台父级，并让双轨仅承担原生的 `rotationY` 与 `TransformOrigin`，避免把一个远距离透视值错误叠加在轨道自身。
+- 这是按源码参数进行的 CSS 透视映射，不等于 Android RenderNode 的逐像素等价；需要在目标设备上继续对照校准。
+
 ## v0.6.0 — 修正原生卡片翻转结构
 
 - 左侧瓷质轨道不再生成正反两面，也不再响应点击翻面；对应 `CardFace` 的 `effectiveFlip = if (isGoldTrack) 0f else flipAngle` 与 Frost 分支。
@@ -73,6 +79,8 @@ npx cap open android
 这是基于 Android 源码逻辑重写的 Web 实现，不是把 Jetpack Compose 直接运行在浏览器中。Android 的 AGSL RuntimeShader、Kyant Backdrop 的真实折射/镜头效果、系统重力传感器和原生弹簧动画不能被 CSS 完全等价复刻；目前网页端对材质与部分动画使用 CSS 近似。需要继续通过原版设备截图逐项校准视觉差异，不能将当前版本描述为像素级一致。
 
 ## 版本记录
+
+- **0.7.0**：根据 Android `cameraDistance = 8f * density` 校准舞台 3D 透视层级，修正轨道透视放置位置。
 
 - **0.6.0**：修正左轨瓷质卡片不翻面、右轨绕 X 轴翻面，并将翻转角和抬升拆为独立弹簧状态。
 
