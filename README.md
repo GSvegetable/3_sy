@@ -1,23 +1,34 @@
-# 3_sy — Black Workspace
+# 3_sy — Dual Rail Demo
 
-Cross-platform recreation of the Android Black Workspace interaction.
+A web preview of the two-rail card interaction from the Android Black Workspace project.
 
-## v0.2.0 — Native feedback and glass transitions
-- Two independently draggable card rails with inertial scrolling
-- Three spatial presets, switchable with controls or horizontal swipe
-- Curved card layout, glass-style cards, flip interaction, and node search
-- Browser glass-ripple / champagne-frost transition inspired by the supplied AGSL shaders
-- Capacitor Haptics integration for Android; browser vibration fallback where supported
-- Capacitor Android wrapper and GitHub Actions workflow for building a debug APK
+## v0.3.0 — Minimal rail-only preview
+
+- Removed web-only search, preset buttons, headings, help text, and decorative panels.
+- The preview now contains only the two card rails and their cards.
+- Fixed a startup error caused by JavaScript trying to bind search events after the search field was removed.
+- Kept card flip, independent rail scrolling with inertia, and horizontal preset switching.
+- Kept Capacitor Haptics on supported Android builds, with browser vibration as a fallback where available.
+
+## Online preview
+
+https://3-sy-workspace.vercel.app
 
 ## Run locally
+
 ```bash
 npm install
 npm run dev
 ```
-Production web build: `npm run build`.
+
+Create a production web build:
+
+```bash
+npm run build
+```
 
 ## Android APK
+
 ```bash
 npm install
 npm run build
@@ -26,14 +37,13 @@ npx cap sync android
 cd android
 ./gradlew assembleDebug
 ```
+
 APK output: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-GitHub Actions: **Actions → Build Android APK → Run workflow**. Download the APK from the completed workflow artifact.
+If the Android project has already been added, do not run `npx cap add android` again; run `npx cap sync android` instead.
 
-## Online preview
-https://3-sy-workspace.vercel.app
+## Porting scope and known differences
 
-## Porting notes
-The supplied Android `HapticEngine` is represented by Capacitor Haptics on native Android and the browser vibration API where available. The three AGSL shaders cannot execute directly in browsers: the web build recreates their visual language with CSS backdrop blur, champagne tint, edge highlights, noise texture, ripple masking, and CSS 3D card flips. This is a visual/interaction port, not a byte-for-byte shader translation.
+The web preview is a browser implementation, not a pixel-identical rendering of the original Android app. Android AGSL shaders and native gravity-sensor behavior do not run directly in a browser. The web version approximates card materials and transitions with CSS. Native haptic feedback is available through Capacitor on supported Android builds; browser vibration support varies by device and browser.
 
-The original Android gravity-sensor behavior and any remaining native-only integrations still require the full Android project and relevant source files. The supplied haptics and shader source has now been incorporated into this port.
+The current preview focuses on the two-rail layout and its core interactions. Further visual matching should be based on direct comparison with the original Android app.
