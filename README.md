@@ -1,49 +1,42 @@
-# 3_sy — Dual Rail Demo
+# 3_sy — Android 双轨卡片空间的 Web 移植
 
-A web preview of the two-rail card interaction from the Android Black Workspace project.
+这是 Android `BlackWorkspaceScreen` 的浏览器移植版本。预览页只保留原版的两条卡片轨道，不添加网页专属控制面板。
 
-## v0.3.0 — Minimal rail-only preview
+## v0.4.0 — 按 Android 源码重建布局
 
-- Removed web-only search, preset buttons, headings, help text, and decorative panels.
-- The preview now contains only the two card rails and their cards.
-- Fixed a startup error caused by JavaScript trying to bind search events after the search field was removed.
-- Kept card flip, independent rail scrolling with inertia, and horizontal preset switching.
-- Kept Capacitor Haptics on supported Android builds, with browser vibration as a fallback where available.
+- 使用原版 `BlackWorkspaceData.kt` 的 9 张卡片内容与三组 Peak / Curve / Tilt 预设。
+- 按原版尺寸实现 150 × 132 dp 卡片、72 dp 堆叠步距、58 dp 左边距和 -24 dp 轨道间距。
+- 按原版焦点比例、圆弧半径、三角函数坐标、焦点缩放、层级和越界透明度计算卡片位置。
+- 左轨采用有限滚动与边界压缩回弹；右轨按原版奇数卡片序列循环排列。
+- 保留独立轨道拖动、惯性、横向切换预设、点击翻面、长按跨轨移动和可用设备上的触觉反馈。
+- 卡片正面、背面和左轨瓷质卡面按 `CardFace` 的结构与配色重新实现。
 
-## Online preview
+## 在线预览
 
 https://3-sy-workspace.vercel.app
 
-## Run locally
+## 本地运行
 
 ```bash
 npm install
 npm run dev
 ```
 
-Create a production web build:
+构建：
 
 ```bash
 npm run build
 ```
 
-## Android APK
+## Android
 
 ```bash
 npm install
 npm run build
-npx cap add android
 npx cap sync android
-cd android
-./gradlew assembleDebug
+npx cap open android
 ```
 
-APK output: `android/app/build/outputs/apk/debug/app-debug.apk`.
+## 与原生版本的差异
 
-If the Android project has already been added, do not run `npx cap add android` again; run `npx cap sync android` instead.
-
-## Porting scope and known differences
-
-The web preview is a browser implementation, not a pixel-identical rendering of the original Android app. Android AGSL shaders and native gravity-sensor behavior do not run directly in a browser. The web version approximates card materials and transitions with CSS. Native haptic feedback is available through Capacitor on supported Android builds; browser vibration support varies by device and browser.
-
-The current preview focuses on the two-rail layout and its core interactions. Further visual matching should be based on direct comparison with the original Android app.
+这是基于 Android 源码逻辑重写的 Web 实现，不是把 Jetpack Compose 直接运行在浏览器中。Android 的 AGSL RuntimeShader、Kyant Backdrop 的真实折射/镜头效果、系统重力传感器和原生弹簧动画不能被 CSS 完全等价复刻；目前网页端对材质与部分动画使用 CSS 近似。需要继续通过原版设备截图逐项校准视觉差异，不能将当前版本描述为像素级一致。
