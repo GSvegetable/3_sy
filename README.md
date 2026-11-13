@@ -1,22 +1,23 @@
 # 3_sy — Black Workspace
 
-A cross-platform recreation of the Android Black Workspace interaction: two independently scrollable card rails, three animated spatial presets, curved card placement, inertial motion, card flipping, and searchable nodes.
+Cross-platform recreation of the Android Black Workspace interaction.
 
-## Current implementation
-- Responsive browser experience (desktop and mobile web)
+## v0.2.0 — Native feedback and glass transitions
 - Two independently draggable card rails with inertial scrolling
 - Three spatial presets, switchable with controls or horizontal swipe
 - Curved card layout, glass-style cards, flip interaction, and node search
+- Browser glass-ripple / champagne-frost transition inspired by the supplied AGSL shaders
+- Capacitor Haptics integration for Android; browser vibration fallback where supported
 - Capacitor Android wrapper and GitHub Actions workflow for building a debug APK
 
 ## Run locally
-`npm install`
-`npm run dev`
-
-Build the web version with `npm run build`.
+```bash
+npm install
+npm run dev
+```
+Production web build: `npm run build`.
 
 ## Android APK
-In an Android development environment:
 ```bash
 npm install
 npm run build
@@ -25,12 +26,14 @@ npx cap sync android
 cd android
 ./gradlew assembleDebug
 ```
-The APK is generated at `android/app/build/outputs/apk/debug/app-debug.apk`.
+APK output: `android/app/build/outputs/apk/debug/app-debug.apk`.
 
-A GitHub Actions workflow named **Build Android APK** is included. Run it from **Actions → Build Android APK → Run workflow**; the APK is published as a workflow artifact.
+GitHub Actions: **Actions → Build Android APK → Run workflow**. Download the APK from the completed workflow artifact.
 
 ## Online preview
-This is a Vite project deployable on Vercel with the repository root as project root. Web deployment and Android packaging are separate targets.
+https://3-sy-workspace.vercel.app
 
-## Source notes
-The initial port is based on the four Kotlin source files supplied for workspace data, search matching, card visuals, and `BlackWorkspaceScreen`. Android gravity sensors, native haptics, and the custom blur-ripple shader are not yet ported. The fifth source file has not yet been received, so this is an initial functional port rather than a claim of pixel-perfect parity.
+## Porting notes
+The supplied Android `HapticEngine` is represented by Capacitor Haptics on native Android and the browser vibration API where available. The three AGSL shaders cannot execute directly in browsers: the web build recreates their visual language with CSS backdrop blur, champagne tint, edge highlights, noise texture, ripple masking, and CSS 3D card flips. This is a visual/interaction port, not a byte-for-byte shader translation.
+
+The original Android gravity-sensor behavior and any remaining native-only integrations still require the full Android project and relevant source files. The supplied haptics and shader source has now been incorporated into this port.
