@@ -1,7 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
-const native = () => {
+let lastTickAt = 0;\nconst native = () => {
   try { return Capacitor.isNativePlatform(); } catch { return false; }
 };
 const fallbackVibrate = (pattern) => {
