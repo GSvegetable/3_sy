@@ -19,6 +19,7 @@ const orders=[C.map((_,i)=>i).filter(i=>i%2===0),C.map((_,i)=>i).filter(i=>i%2==
 const flipped=new Set(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),mod=(v,m)=>((v%m)+m)%m;
 let preset=0,peak=-282,curve=45,tilt=95,anim=null,animAt=0;
 let lo=0,ro=0,lv=0,rv=0,lt=0,rt=0,ld=false,rd=false,lp=NaN,rp=NaN;
+let leftDeltaLow=0,rightDeltaLow=0,prevLo=0,prevRo=0,leftSpringV=0;
 let layout=null,gesture=null,cardHold=null,lastFrame=0,raf=0,lastLS=0,lastRS=0;
 
 function measure(){
@@ -132,8 +133,8 @@ function move(e){
  }
  if(Math.abs(dy)<=Math.abs(dx)*1.5)return;
  const delta=e.clientY-gesture.lastY,dt=Math.max(8,now-gesture.lastTime);
- if(gesture.side==='left'){lt-=delta;lp=e.clientY;lo+=(lt-lo)*.95;lv=lv*.35+(-delta/dt*16)*.65;}
- else{rt-=delta;rp=e.clientY;ro+=(rt-ro)*.95;rv=rv*.35+(-delta/dt*16)*.65;}
+ if(gesture.side==='left'){lt-=delta;lp=e.clientY;}
+ else{rt-=delta;rp=e.clientY;}
  gesture.lastY=e.clientY;gesture.lastTime=now;e.preventDefault();
 }
 function up(e){
@@ -183,14 +184,25 @@ function cardUp(e){
 }
 
 function frame(now){
- const dt=lastFrame?Math.min(40,now-lastFrame):16.667;lastFrame=now;const fr=Math.pow(.96,dt/16.667);
- if(!ld){lo+=lv*dt/16.667;lv*=fr;if(Math.abs(lv)<.15)lv=0;}
- if(!rd){ro+=rv*dt/16.667;rv*=fr;if(Math.abs(rv)<.15)rv=0;}
+ const dt=lastFrame?Math.min(40,now-lastFrame):16.667;lastFrame=now;
+ const frameScale=dt/16.667,fr=Math.pow(.96,frameScale);
+ if(ld)lo+=(lt-lo)*.95;else{lo+=lv*frameScale;lv*=fr;if(Math.abs(lv)<.15)lv=0;}
+ if(rd)ro+=(rt-ro)*.95;else{ro+=rv*frameScale;rv*=fr;if(Math.abs(rv)<.15)rv=0;}
+ const rawLeftDelta=lo-prevLo,rawRightDelta=ro-prevRo;prevLo=lo;prevRo=ro;
+ leftDeltaLow=leftDeltaLow*.55+rawLeftDelta*.45;
+ rightDeltaLow=rightDeltaLow*.55+rawRightDelta*.45;
+ if(ld)lv=lv*.35+leftDeltaLow*.65;
+ if(rd)rv=rv*.35+rightDeltaLow*.65;
  const ls=Math.trunc(lo/STEP),rs=Math.trunc(ro/STEP);
  if(ls!==lastLS){hapticTick(clamp(Math.abs(lv)/MAXV,0,1));lastLS=ls;}
  if(rs!==lastRS){hapticTick(clamp(Math.abs(rv)/MAXV,0,1));lastRS=rs;}
- const bound=clamp(lo,layout.bigMin,layout.bigMax);
- if(!ld&&Math.abs(bound-lo)>.5){lo+=(bound-lo)*Math.min(1,dt/220);lv=0;}
+ const bound=clamp(lo,layout.bigMin,layout.bigMax),overflow=bound-lo;
+ if(!ld&&Math.abs(overflow)>.5){
+  // Source uses a medium-low damped spring to return the finite rail to its bounds.
+  leftSpringV=(leftSpringV+overflow*.12*frameScale)*Math.pow(.72,frameScale);
+  lo+=leftSpringV*frameScale;lv=0;
+  if(Math.abs(overflow)<.35&&Math.abs(leftSpringV)<.35){lo=bound;leftSpringV=0;}
+ }else if(ld)leftSpringV=0;
  render(now);raf=requestAnimationFrame(frame);
 }
 function resize(){measure();build();render(performance.now());}
