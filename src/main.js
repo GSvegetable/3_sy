@@ -1,30 +1,152 @@
 import './style.css';
-import { hapticTick, hapticRelease, hapticReverse } from './effects.js';
-const cards=[
-{tag:'01',title:'触发输入',subtitle:'Trigger / Input',full:'chufashuru',abbr:'cfsr',desc:'从一个信号、一句话或一个动作开始。'},
-{tag:'02',title:'提示上下文',subtitle:'Prompt / Context',full:'tishishangxiawen',abbr:'tssxw',desc:'为模型提供目标、背景与边界。'},
-{tag:'03',title:'模型推理',subtitle:'Model / Reasoning',full:'moxingtuili',abbr:'mxtl',desc:'理解信息，建立关联，形成判断。'},
-{tag:'04',title:'工具动作',subtitle:'Tool / Action',full:'gongjudongzuo',abbr:'gjdz',desc:'让想法连接工具，并转化为行动。'},
-{tag:'05',title:'记忆数据',subtitle:'Memory / Data',full:'jiyishuju',abbr:'jysj',desc:'保存有价值的信息，让上下文持续。'},
-{tag:'06',title:'输出响应',subtitle:'Output / Response',full:'shuchuxiangying',abbr:'scxy',desc:'把过程整理成清晰、可用的结果。'},
-{tag:'07',title:'逻辑控制',subtitle:'Logic / Control',full:'luojikongzhi',abbr:'ljkz',desc:'管理流程、条件与执行顺序。'},
-{tag:'08',title:'安全观测',subtitle:'Safety / Observability',full:'anquanguance',abbr:'aqgc',desc:'持续观察系统状态，守住安全边界。'},
-{tag:'09',title:'编排',subtitle:'Orchestration',full:'bianpai',abbr:'bp',desc:'让多个步骤与能力协同工作。'}];
-const presets=[{peak:-282,curve:45,tilt:95,label:'01'},{peak:21.5,curve:16,tilt:65,label:'02'},{peak:735,curve:14,tilt:-65,label:'03'}];
-const $=s=>document.querySelector(s),stage=$('#stage'),left=$('#railLeft'),right=$('#railRight');
-let presetIndex=0,leftOffset=0,rightOffset=0,leftVelocity=0,rightVelocity=0,activePointer=null,dragRail=null,lastY=0,lastX=0,lastTime=0,moved=false,matchIndex=-1,raf=0;
-const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-function cardMarkup(c,side,index){return `<article class="card" data-index="${index}" data-side="${side}" tabindex="0"><div class="card-inner"><div class="card-front"><div class="card-top"><span class="card-tag">${c.tag}</span><span class="card-spark">✳</span></div><div class="card-copy"><h2>${c.title}</h2><p>${c.subtitle}</p></div><div class="card-bottom"><span>SYS / NODE</span><span>↗</span></div></div><div class="card-back"><span class="back-label">NODE ${c.tag}</span><h2>${c.title}</h2><p>${c.desc}</p><span class="back-hint">TAP TO RETURN ↗</span></div></div></article>`}
-function buildCards(){left.innerHTML=cards.map((c,i)=>cardMarkup(c,'left',i)).join('');right.innerHTML=[...cards].reverse().map((c,i)=>cardMarkup(c,'right',cards.length-1-i)).join('');stage.querySelectorAll('.card').forEach(card=>{card.addEventListener('click',()=>{if(moved)return;card.classList.toggle('flipped');hapticTick(.65)});card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click()}})})}
-function curveFor(i,side,p){const n=i-4,d=side==='left'?-1:1;return{x:d*(30+n*n*p.curve*.48)+Math.sin((i+1)*.75)*10,y:n*76+p.peak*.23,rotate:d*(n*p.tilt/19),scale:Math.max(.72,1-Math.abs(n)*.045)}}
-function render(){const p=presets[presetIndex],h=stage.clientHeight||600;for(const [rail,side,offset] of [[left,'left',leftOffset],[right,'right',rightOffset]])rail.querySelectorAll('.card').forEach(el=>{const i=+el.dataset.index,pos=curveFor(i,side,p),y=pos.y-offset,visible=y>-h*.66&&y<h*.66;el.style.opacity=visible?'1':'0';el.style.pointerEvents=visible?'auto':'none';el.style.transform=`translate3d(calc(-50% + ${pos.x}px),calc(-50% + ${y}px),0) rotate(${pos.rotate}deg) scale(${pos.scale})`;el.style.zIndex=String(100-Math.round(Math.abs(y)));el.classList.toggle('dimmed',matchIndex>=0&&matchIndex!==i);el.classList.toggle('matched',matchIndex===i)});}
-function loop(){const friction=reduced?1:.91;leftVelocity*=friction;rightVelocity*=friction;if(!dragRail){leftOffset+=leftVelocity;rightOffset+=rightVelocity}const limit=cards.length*76*.45;leftOffset=Math.max(-limit,Math.min(limit,leftOffset));rightOffset=Math.max(-limit,Math.min(limit,rightOffset));render();raf=requestAnimationFrame(loop)}
-function switchPreset(n){n=Math.max(0,Math.min(2,n));if(n===presetIndex)return;presetIndex=n;hapticReverse();render()}
-function down(e){if(e.target.closest('.card'))return;activePointer=e.pointerId;stage.setPointerCapture?.(e.pointerId);lastY=e.clientY;lastX=e.clientX;lastTime=performance.now();moved=false;dragRail=e.clientX<stage.getBoundingClientRect().left+stage.clientWidth/2?'left':'right';if(dragRail==='left')leftVelocity=0;else rightVelocity=0;hapticTick(.2)}
-function move(e){if(activePointer!==e.pointerId)return;const dy=e.clientY-lastY,dx=e.clientX-lastX,now=performance.now(),dt=Math.max(8,now-lastTime);if(Math.abs(dx)>4||Math.abs(dy)>4)moved=true;if(Math.abs(dx)>Math.abs(dy)*1.2)return;if(dragRail==='left'){leftOffset-=dy;leftVelocity=-dy/dt*16}else{rightOffset-=dy;rightVelocity=-dy/dt*16}if(Math.abs(dy)>14)hapticTick(Math.min(1,Math.abs(dy)/40));lastY=e.clientY;lastX=e.clientX;lastTime=now}
-function up(e){if(activePointer!==e.pointerId)return;const dx=e.clientX-lastX;const releasedRail=dragRail;const releaseSpeed=Math.abs(releasedRail==='left'?leftVelocity:rightVelocity);activePointer=null;dragRail=null;hapticRelease(Math.min(1,releaseSpeed/18));if(Math.abs(dx)>52)switchPreset(presetIndex+(dx<0?1:-1));setTimeout(()=>moved=false,80)}
-stage.addEventListener('pointerdown',down);stage.addEventListener('pointermove',move);stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
-stage.addEventListener('wheel',e=>{e.preventDefault();const side=e.clientX<stage.getBoundingClientRect().left+stage.clientWidth/2?'left':'right';if(side==='left')leftOffset+=e.deltaY;else rightOffset+=e.deltaY},{passive:false});
+import {hapticTick,hapticRelease,hapticReverse} from './effects.js';
 
-let touchStart=null;stage.addEventListener('touchstart',e=>{if(e.touches.length===1)touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY}},{passive:true});stage.addEventListener('touchend',e=>{if(!touchStart)return;const t=e.changedTouches[0],dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;if(Math.abs(dx)>65&&Math.abs(dx)>Math.abs(dy)*1.15)switchPreset(presetIndex+(dx<0?1:-1));touchStart=null},{passive:true});
-buildCards();render();raf=requestAnimationFrame(loop);addEventListener('resize',render);document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelAnimationFrame(raf);else raf=requestAnimationFrame(loop)});
+const C=[
+['01','触发输入','Trigger / Input','chufashuru','cfsr'],
+['02','提示上下文','Prompt / Context','tishishangxiawen','tssxw'],
+['03','模型推理','Model / Reasoning','moxingtuili','mxtl'],
+['04','工具动作','Tool / Action','gongjudongzuo','gjdz'],
+['05','记忆数据','Memory / Data','jiyishuju','jysj'],
+['06','输出响应','Output / Response','shuchuxiangying','scxy'],
+['07','逻辑控制','Logic / Control','luojikongzhi','ljkz'],
+['08','安全观测','Safety / Observability','anquanguance','aqgc'],
+['09','编排','Orchestration','bianpai','bp']
+].map(([tag,title,subtitle,pinyinFull,pinyinAbbr])=>({tag,title,subtitle,pinyinFull,pinyinAbbr}));
+const P=[{peak:-282,curve:45,tilt:95},{peak:21.5,curve:16,tilt:65},{peak:735,curve:14,tilt:-65}];
+const W=150,H=132,GAP=-24,PAD=58,STEP=72,FOCUS=.42,MAXV=55;
+const stage=document.querySelector('#stage'),L=document.querySelector('#railLeft'),R=document.querySelector('#railRight');
+const orders=[C.map((_,i)=>i).filter(i=>i%2===0),C.map((_,i)=>i).filter(i=>i%2===1)];
+const flipped=new Set(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),mod=(v,m)=>((v%m)+m)%m;
+let preset=0,peak=-282,curve=45,tilt=95,anim=null,animAt=0;
+let lo=0,ro=0,lv=0,rv=0,lt=0,rt=0,ld=false,rd=false,lp=NaN,rp=NaN;
+let layout=null,gesture=null,lastFrame=0,raf=0,lastLS=0,lastRS=0;
+
+function measure(){
+ const h=stage.clientHeight,w=stage.clientWidth,b=orders[0].length,s=orders[1].length;
+ layout={h,w,focusY:h*FOCUS,maxDist:Math.max(h/2,1),bigRows:b,smallRows:s,smallHeight:s*STEP,
+ bigMin:-h*FOCUS+H/2,bigMax:(b-1)*STEP-h*FOCUS+H/2,copies:Math.ceil(h/Math.max(b*STEP,s*STEP))+1};
+ if(!measure.ready){lo=ro=-h*FOCUS+H/2;lt=lo;rt=ro;measure.ready=true;}
+}
+measure.ready=false;
+function html(i,side,copy){
+ const c=C[i],gold=side==='left';
+ const front='<div class="face front"><div class="cast"></div><span class="eyebrow">AI · '+c.tag+'</span><div class="copy"><h2>'+c.title+'</h2><p>'+c.subtitle+'</p></div></div>';
+ const back=gold?'<div class="face back porcelain"><div class="glaze"></div><div class="copy"><span class="gold-label">AI · '+c.tag+'</span><h2>'+c.title+'</h2><p>'+c.subtitle+'</p></div></div>':'<div class="face back"><div class="cast"></div></div>';
+ return '<article class="card '+(gold?'gold':'normal')+'" data-i="'+i+'" data-copy="'+copy+'"><div class="inner">'+front+back+'</div></article>';
+}
+function bind(el){
+ const i=+el.dataset.i;
+ if(flipped.has(i))el.classList.add('flipped');
+ el.addEventListener('click',()=>{
+  if(el.dataset.dragged==='1'){el.dataset.dragged='0';return;}
+  if(flipped.has(i))flipped.delete(i);else flipped.add(i);
+  stage.querySelectorAll('.card[data-i="'+i+'"]').forEach(n=>n.classList.toggle('flipped',flipped.has(i)));
+  hapticTick(.65);
+ });
+}
+function build(){
+ L.innerHTML=orders[0].map(i=>html(i,'left',0)).join('');
+ L.querySelectorAll('.card').forEach(bind);
+ R.innerHTML='';
+ for(let k=-layout.copies;k<=layout.copies;k++)for(const i of orders[1]){
+  const d=document.createElement('div');d.innerHTML=html(i,'right',k);
+  const el=d.firstElementChild;R.append(el);bind(el);
+ }
+}
+function geometry(row,side,offset,copy){
+ const p=layout;
+ const baseY=side==='left'?row*STEP-offset:row*STEP-mod(offset,p.smallHeight)+copy*p.smallHeight;
+ const center=baseY+H/2,sBase=center-p.focusY,norm=clamp(Math.abs(sBase)/p.maxDist,0,1);
+ const pointer=side==='left'?lp:rp,velocity=side==='left'?lv:rv,raw=velocity/MAXV;
+ const speed=Math.abs(raw)<.1?0:clamp(raw,-1.2,1.2);
+ const stretchD=clamp((center-(Number.isFinite(pointer)?pointer:center))/p.maxDist,-1,1);
+ const stretch=speed*70*stretchD*Math.abs(stretchD),s=sBase+stretch,amount=curve/100;
+ const radius=amount<.01?Infinity:Math.max(140/amount,Math.abs(peak));
+ const thetaRaw=Number.isFinite(radius)?s/radius:0,theta=clamp(thetaRaw,-Math.PI,Math.PI);
+ const dx=Number.isFinite(radius)?-radius*(1-Math.cos(theta)):0;
+ const cy=Number.isFinite(radius)?p.focusY+radius*Math.sin(theta):center+stretch;
+ const smooth=Math.cos(norm*Math.PI/2),boost=.12*Math.pow(smooth,4);
+ const x=PAD+(side==='left'?0:W+GAP)+peak+dx,y=cy-H/2;
+ const out=Math.max(0,Math.abs(thetaRaw)-Math.PI);
+ return{x,y,alpha:out<.001?1:clamp(1-out*2,0,1),
+ scale:(.75+.32*smooth+boost)*(side==='left'?1.06:.96),
+ z:side==='left'?10000+(p.bigRows-row)*100+smooth*20:-copy*1000+(p.smallRows-row)*100+smooth*20};
+}
+function setPreset(n){
+ n=clamp(n,0,2);if(n===preset)return;
+ anim={peak,curve,tilt};preset=n;animAt=performance.now();hapticReverse();
+}
+function render(now){
+ if(!layout)measure();
+ if(anim){
+  const t=clamp((now-animAt)/760,0,1),e=1-Math.exp(-7*t)*Math.cos(10*t),p=P[preset];
+  peak=anim.peak+(p.peak-anim.peak)*e;curve=anim.curve+(p.curve-anim.curve)*e;tilt=anim.tilt+(p.tilt-anim.tilt)*e;
+  if(t>=1)anim=null;
+ }
+ const over=lo<layout.bigMin?layout.bigMin-lo:lo>layout.bigMax?lo-layout.bigMax:0;
+ const compress=over?Math.min(Math.sqrt(over*6),120):0;
+ const shown=lo<layout.bigMin?layout.bigMin-compress:lo>layout.bigMax?layout.bigMax+compress:lo;
+ const tn=clamp(tilt/100,-5,5),rot=tn*48,origin=clamp(.5-tn*.35,0,1);
+ L.style.transform=R.style.transform='perspective(1100px) rotateY('+rot+'deg)';
+ L.style.transformOrigin=R.style.transformOrigin=(origin*100)+'% 50%';
+ for(const el of L.querySelectorAll('.card')){
+  const i=+el.dataset.i,row=orders[0].indexOf(i);if(row<0)continue;
+  apply(el,geometry(row,'left',shown,0));
+ }
+ for(const el of R.querySelectorAll('.card')){
+  const i=+el.dataset.i,row=orders[1].indexOf(i);if(row<0)continue;
+  apply(el,geometry(row,'right',ro,+el.dataset.copy));
+ }
+}
+function apply(el,g){
+ el.style.transform='translate3d('+g.x+'px,'+g.y+'px,0) scale('+g.scale+')';
+ el.style.opacity=String(g.alpha);el.style.zIndex=String(Math.round(g.z));
+}
+function down(e){
+ if(e.target.closest('.card'))return;
+ const x1=PAD+peak+W/2,x2=x1+W+GAP,dl=Math.abs(e.clientX-x1),dr=Math.abs(e.clientX-x2);
+ const side=dl<=dr?'left':'right';if(Math.min(dl,dr)>W*.75)return;
+ if(side==='left'){ld=true;lv=0;lt=lo;}else{rd=true;rv=0;rt=ro;}
+ gesture={id:e.pointerId,side,x:e.clientX,y:e.clientY,lastY:e.clientY,lastTime:performance.now(),switched:false};
+ stage.setPointerCapture?.(e.pointerId);
+}
+function move(e){
+ if(!gesture||gesture.id!==e.pointerId)return;
+ const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y,now=performance.now();
+ if(!gesture.switched&&Math.abs(dx)>W*1.5&&Math.abs(dx)>Math.abs(dy)*1.5){
+  gesture.switched=true;setPreset(preset+(dx<0?1:-1));e.preventDefault();return;
+ }
+ if(Math.abs(dy)<=Math.abs(dx)*1.5)return;
+ const delta=e.clientY-gesture.lastY,dt=Math.max(8,now-gesture.lastTime);
+ if(gesture.side==='left'){lt-=delta;lp=e.clientY;lo+=(lt-lo)*.95;lv=lv*.35+(-delta/dt*16)*.65;}
+ else{rt-=delta;rp=e.clientY;ro+=(rt-ro)*.95;rv=rv*.35+(-delta/dt*16)*.65;}
+ gesture.lastY=e.clientY;gesture.lastTime=now;e.preventDefault();
+}
+function up(e){
+ if(!gesture||gesture.id!==e.pointerId)return;
+ if(gesture.side==='left')ld=false;else rd=false;
+ hapticRelease(clamp(Math.abs(gesture.side==='left'?lv:rv)/MAXV,0,1));gesture=null;
+}
+stage.addEventListener('pointerdown',down);
+stage.addEventListener('pointermove',move);
+stage.addEventListener('pointerup',up);
+stage.addEventListener('pointercancel',up);
+stage.addEventListener('wheel',e=>{
+ e.preventDefault();
+ if(e.clientX<layout.w/2){lo+=e.deltaY;lt=lo;}else{ro+=e.deltaY;rt=ro;}
+},{passive:false});
+function frame(now){
+ const dt=lastFrame?Math.min(40,now-lastFrame):16.667;lastFrame=now,fr=Math.pow(.96,dt/16.667);
+ if(!ld){lo+=lv*dt/16.667;lv*=fr;if(Math.abs(lv)<.15)lv=0;}
+ if(!rd){ro+=rv*dt/16.667;rv*=fr;if(Math.abs(rv)<.15)rv=0;}
+ const ls=Math.trunc(lo/STEP),rs=Math.trunc(ro/STEP);
+ if(ls!==lastLS){hapticTick(clamp(Math.abs(lv)/MAXV,0,1));lastLS=ls;}
+ if(rs!==lastRS){hapticTick(clamp(Math.abs(rv)/MAXV,0,1));lastRS=rs;}
+ const bound=clamp(lo,layout.bigMin,layout.bigMax);
+ if(!ld&&Math.abs(bound-lo)>.5){lo+=(bound-lo)*Math.min(1,dt/220);lv=0;}
+ render(now);raf=requestAnimationFrame(frame);
+}
+function resize(){measure();build();render(performance.now());}
+measure();build();render(performance.now());raf=requestAnimationFrame(frame);
+addEventListener('resize',resize);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(raf);lastFrame=0;}else raf=requestAnimationFrame(frame);});
