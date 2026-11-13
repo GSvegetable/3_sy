@@ -16,7 +16,7 @@ const P=[{peak:-282,curve:45,tilt:95},{peak:21.5,curve:16,tilt:65},{peak:735,cur
 const W=150,H=132,GAP=-24,PAD=58,STEP=72,FOCUS=.42,MAXV=55;
 const stage=document.querySelector('#stage'),L=document.querySelector('#railLeft'),R=document.querySelector('#railRight');
 const orders=[C.map((_,i)=>i).filter(i=>i%2===0),C.map((_,i)=>i).filter(i=>i%2===1)];
-const flipped=new Set(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),mod=(v,m)=>((v%m)+m)%m;
+const flips=new Map(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),mod=(v,m)=>((v%m)+m)%m;
 let preset=0,peak=-282,curve=45,tilt=95,anim=null,animAt=0;
 let lo=0,ro=0,lv=0,rv=0,lt=0,rt=0,ld=false,rd=false,lp=NaN,rp=NaN;
 let leftDeltaLow=0,rightDeltaLow=0,prevLo=0,prevRo=0,leftSpringV=0;
@@ -31,23 +31,21 @@ function measure(){
 measure.ready=false;
 function html(i,side,copy){
  const c=C[i],gold=side==='left';
+ const porcelain='<div class="face porcelain"><div class="glaze"></div><div class="copy"><span class="gold-label">AI · '+c.tag+'</span><h2>'+c.title+'</h2><p>'+c.subtitle+'</p></div></div>';
  const front='<div class="face front"><div class="cast"></div><span class="eyebrow">AI · '+c.tag+'</span><div class="copy"><h2>'+c.title+'</h2><p>'+c.subtitle+'</p></div></div>';
- const back=gold?'<div class="face back porcelain"><div class="glaze"></div><div class="copy"><span class="gold-label">AI · '+c.tag+'</span><h2>'+c.title+'</h2><p>'+c.subtitle+'</p></div></div>':'<div class="face back"><div class="cast"></div></div>';
- return '<article class="card '+(gold?'gold':'normal')+'" data-i="'+i+'" data-copy="'+copy+'"><div class="inner">'+front+back+'</div></article>';
+ const back='<div class="face back"><div class="cast"></div></div>';
+ return '<article class="card '+(gold?'gold':'normal')+'" data-i="'+i+'" data-copy="'+copy+'"><div class="inner">'+(gold?porcelain:front+back)+'</div></article>';
 }
 function bind(el){
  const i=+el.dataset.i;
- if(flipped.has(i))el.classList.add('flipped');
  el.addEventListener('pointerdown',e=>cardDown(e,el));
  el.addEventListener('click',()=>{
   if(el.dataset.dragged==='1'){el.dataset.dragged='0';return;}
-  const opening=!flipped.has(i);
-  if(opening)flipped.add(i);else flipped.delete(i);
-  stage.querySelectorAll('.card[data-i="'+i+'"]').forEach(n=>{
-   n.classList.toggle('flipped',opening);
-   n.classList.toggle('unflipping',!opening);
-   if(!opening)window.setTimeout(()=>n.classList.remove('unflipping'),780);
-  });
+  // Native CardFace disables flip on the porcelain/gold track.
+  if(el.classList.contains('gold'))return;
+  const state=flips.get(i)||{angle:0,velocity:0,elev:0,elevVelocity:0,target:0};
+  state.target=state.target===180?0:180;
+  flips.set(i,state);
   hapticTick(.65);
  });
 }
@@ -106,8 +104,12 @@ function render(now){
  }
 }
 function apply(el,g){
- el.style.transform='translate3d('+g.x+'px,'+g.y+'px,0) scale('+g.scale+')'+(el.classList.contains('normal')?' rotateY(-8deg)':'');
- el.style.opacity=String(g.alpha);el.style.zIndex=String(Math.round(g.z));
+ const state=el.classList.contains('normal')?(flips.get(+el.dataset.i)||null):null;
+ const angle=state?state.angle:0,elev=state?state.elev:0;
+ const arch=Math.sin(clamp(angle/180,0,1)*Math.PI)*12;
+ const lift=elev*26+arch,flipScale=1+elev*.12;
+ el.style.transform='translate3d('+g.x+'px,'+(g.y-lift)+'px,0) scale('+(g.scale*flipScale)+')'+(el.classList.contains('normal')?' rotateY(-8deg) rotateX('+angle+'deg)':'');
+ el.style.opacity=String(g.alpha);el.style.zIndex=String(Math.round(g.z+elev*100));
 }
 function down(e){
  // Match Android's root-level Initial-pass gesture detector: swipes may begin on a card.
@@ -178,7 +180,7 @@ function cardUp(e){
   const target=Math.abs(e.clientX-x1)<=Math.abs(e.clientX-x2)?0:1;
   orders[g.side==='left'?0:1]=orders[g.side==='left'?0:1].filter(i=>i!==g.index);
   if(!orders[target].includes(g.index))orders[target].push(g.index);
-  flipped.delete(g.index);measure();build();
+  flips.delete(g.index);measure();build();
  }else if(g.moved)g.el.dataset.dragged='1';
  cardHold=null;
 }
@@ -193,6 +195,15 @@ function frame(now){
  rightDeltaLow=rightDeltaLow*.55+rawRightDelta*.45;
  if(ld)lv=lv*.35+leftDeltaLow*.65;
  if(rd)rv=rv*.35+rightDeltaLow*.65;
+ for(const state of flips.values()){
+  const fs=Math.max(.1,frameScale);
+  state.velocity=(state.velocity+(state.target-state.angle)*.035*fs)*Math.pow(.82,fs);
+  state.angle+=state.velocity*fs;
+  state.elevVelocity=(state.elevVelocity+(state.target/180-state.elev)*.055*fs)*Math.pow(.78,fs);
+  state.elev=clamp(state.elev+state.elevVelocity*fs,0,1);
+  if(Math.abs(state.target-state.angle)<.08&&Math.abs(state.velocity)<.08){state.angle=state.target;state.velocity=0;}
+  if(Math.abs(state.target/180-state.elev)<.001&&Math.abs(state.elevVelocity)<.001){state.elev=state.target/180;state.elevVelocity=0;}
+ }
  const ls=Math.trunc(lo/STEP),rs=Math.trunc(ro/STEP);
  if(ls!==lastLS){hapticTick(clamp(Math.abs(lv)/MAXV,0,1));lastLS=ls;}
  if(rs!==lastRS){hapticTick(clamp(Math.abs(rv)/MAXV,0,1));lastRS=rs;}
