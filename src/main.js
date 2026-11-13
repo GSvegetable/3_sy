@@ -73,7 +73,7 @@ function geometry(row,side,offset,copy){
  const dx=Number.isFinite(radius)?-radius*(1-Math.cos(theta)):0;
  const cy=Number.isFinite(radius)?p.focusY+radius*Math.sin(theta):center+stretch;
  const smooth=Math.cos(norm*Math.PI/2),boost=.12*Math.pow(smooth,4);
- const x=PAD+(side==='left'?0:W+GAP)+peak+dx,y=cy-H/2;
+ const x=PAD+(side==='left'?0:W+GAP)+dx,y=cy-H/2;
  const out=Math.max(0,Math.abs(thetaRaw)-Math.PI);
  return{x,y,alpha:out<.001?1:clamp(1-out*2,0,1),
  scale:(.75+.32*smooth+boost)*(side==='left'?1.06:.96),
