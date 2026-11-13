@@ -6,8 +6,22 @@ body{overscroll-behavior:none}
 .stage{position:relative;width:100%;height:100%;height:100dvh;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;isolation:isolate}
 .rail{position:absolute;inset:0 auto 0 0;width:100%;height:100%;pointer-events:none;transform-style:preserve-3d;will-change:transform}
 .card{position:absolute;left:0;top:0;width:150px;height:132px;perspective:1000px;transform-origin:0 0;pointer-events:auto;will-change:transform,opacity}
-.inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .72s cubic-bezier(.2,.72,.18,1)}
-.card.flipped .inner{transform:rotateY(180deg)}
+.inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:translateZ(0)}
+.card.flipped .inner{animation:card-flip-open .76s cubic-bezier(.2,.72,.18,1) both}
+.card.unflipping .inner{animation:card-flip-close .76s cubic-bezier(.2,.72,.18,1) both}
+@keyframes card-flip-open{
+ 0%{transform:translateY(0) scale(1) rotateY(0deg)}
+ 42%{transform:translateY(-38px) scale(1.12) rotateY(78deg)}
+ 100%{transform:translateY(-26px) scale(1.12) rotateY(180deg)}
+}
+@keyframes card-flip-close{
+ 0%{transform:translateY(-26px) scale(1.12) rotateY(180deg)}
+ 58%{transform:translateY(-38px) scale(1.12) rotateY(102deg)}
+ 100%{transform:translateY(0) scale(1) rotateY(0deg)}
+}
+.card.is-pressed .inner{filter:brightness(.97)}
+.card.is-pressed:not(.is-dragging){transition:filter .12s ease}
+
 .face{position:absolute;inset:0;overflow:hidden;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .front,.back{background:linear-gradient(180deg,#fff 0%,#f0f5f4 100%);box-shadow:0 18px 32px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,255,255,.68)}
 .back{transform:rotateY(180deg);background:linear-gradient(180deg,#f2f6f5 0%,#e3ebea 100%)}
@@ -17,13 +31,32 @@ body{overscroll-behavior:none}
 .copy h2{margin:0 0 3px;font-family:Georgia,"Noto Serif SC",serif;font-size:26px;line-height:28px;font-weight:900;letter-spacing:-.8px;white-space:nowrap;color:#0a0a0a}
 .copy p{margin:0;font:500 9px/1.25 Arial,sans-serif;letter-spacing:.8px;color:rgba(0,0,0,.52);white-space:nowrap}
 .gold .face{border-radius:18px}
-.gold .front,.gold .back{background:linear-gradient(110deg,rgba(214,229,227,.88),rgba(234,242,240,.94) 48%,rgba(247,250,249,.98));box-shadow:0 18px 26px rgba(0,0,0,.30),inset 0 0 0 1px rgba(110,159,163,.35)}
+.gold .front,.gold .back{
+ background:
+  radial-gradient(ellipse at 18% 8%,rgba(255,255,255,.52),transparent 48%),
+  linear-gradient(110deg,rgba(214,229,227,.88),rgba(234,242,240,.94) 48%,rgba(247,250,249,.98));
+ box-shadow:0 18px 26px rgba(0,0,0,.30),inset 0 0 0 1px rgba(110,159,163,.35),inset 0 1px 0 rgba(255,255,255,.75);
+ backdrop-filter:blur(10px) saturate(1.22);
+ -webkit-backdrop-filter:blur(10px) saturate(1.22);
+}
 .gold .back{background:linear-gradient(180deg,#f2f6f5,#e3ebea)}
 .gold .copy{left:16px;right:10px;bottom:12px}
 .gold .copy h2{font-size:22px;line-height:24px;letter-spacing:-.6px;color:#1f3a3d}
 .gold .copy p{font-size:9px;letter-spacing:.4px;color:rgba(110,159,163,.9)}
 .gold-label{display:block;margin-bottom:5px;font:700 8px/1 ui-monospace,monospace;letter-spacing:1.8px;color:rgba(110,159,163,.85)}
-.glaze{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06) 42%,transparent 72%)}
-@media(prefers-reduced-motion:reduce){.inner{transition-duration:.01ms!important}}
+.glaze{
+ position:absolute;inset:0;
+ background:
+  linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06) 42%,transparent 72%),
+  repeating-linear-gradient(113deg,rgba(255,255,255,.018) 0 1px,transparent 1px 4px);
+}
+.gold .front:after,.gold .back:after{
+ content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+ background:linear-gradient(110deg,rgba(110,159,163,.18),transparent 35%,rgba(255,255,255,.26) 72%,transparent);
+ mix-blend-mode:screen;
+}
+@media(prefers-reduced-motion:reduce){
+ .card.flipped .inner,.card.unflipping .inner{animation-duration:.01ms!important}
+}
 
 .card.is-dragging{position:fixed!important;z-index:30000!important;filter:drop-shadow(0 22px 24px rgba(0,0,0,.42))}
