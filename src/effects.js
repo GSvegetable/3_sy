@@ -1,7 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 
-let lastTickAt = 0;\nconst native = () => {
+let lastTickAt = 0;
+const native = () => {
   try { return Capacitor.isNativePlatform(); } catch { return false; }
 };
 const fallbackVibrate = (pattern) => {
@@ -10,8 +11,10 @@ const fallbackVibrate = (pattern) => {
   }
 };
 
-// Web counterpart of HapticEngine.tick(speed).
 export async function hapticTick(speed = 0.5) {
+  const now = Date.now();
+  if (now - lastTickAt < 75) return;
+  lastTickAt = now;
   const s = Math.max(0, Math.min(1, speed));
   if (native()) {
     try { await Haptics.impact({ style: ImpactStyle.Light }); return; } catch {}
@@ -19,7 +22,6 @@ export async function hapticTick(speed = 0.5) {
   fallbackVibrate(7 + Math.round(s * 5));
 }
 
-// Web counterpart of HapticEngine.release(speed).
 export async function hapticRelease(speed = 0.5) {
   const s = Math.max(0, Math.min(1, speed));
   if (native()) {
@@ -28,7 +30,6 @@ export async function hapticRelease(speed = 0.5) {
   fallbackVibrate([0, 16 + Math.round(s * 8)]);
 }
 
-// Web counterpart of HapticEngine.reverse().
 export async function hapticReverse() {
   if (native()) {
     try { await Haptics.impact({ style: ImpactStyle.Medium }); return; } catch {}
