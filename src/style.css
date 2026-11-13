@@ -3,8 +3,8 @@
 html,body,#app{width:100%;height:100%;min-height:100%;margin:0;overflow:hidden}
 body,.stage{background:#000}
 body{overscroll-behavior:none}
-.stage{position:relative;width:100%;height:100%;height:100dvh;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;isolation:isolate;perspective:8px}
-.rail{position:absolute;inset:0 auto 0 0;width:100%;height:100%;pointer-events:none;perspective:1000px;transform-style:preserve-3d;will-change:transform}
+.stage{position:relative;width:100%;height:100%;height:100dvh;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;isolation:isolate;}
+.rail{position:absolute;inset:0 auto 0 0;width:100%;height:100%;pointer-events:none;transform-style:preserve-3d;will-change:transform}
 .card{position:absolute;left:0;top:0;width:150px;height:132px;transform-style:preserve-3d;transform-origin:0 0;pointer-events:auto;will-change:transform,opacity}
 .inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform:translateZ(0)}
 .card.normal{transform-style:preserve-3d;transform-origin:50% 50%}
@@ -54,3 +54,14 @@ body{overscroll-behavior:none}
 }
 
 .card.is-dragging{position:fixed!important;z-index:30000!important;filter:drop-shadow(0 22px 24px rgba(0,0,0,.42))}
+
+/* Native 26% top/bottom black fade masks. Dragged cards sit above both masks. */
+.stage:before,.stage:after{content:"";position:absolute;left:0;right:0;height:26%;z-index:25000;pointer-events:none}
+.stage:before{top:0;background:linear-gradient(180deg,#000 0%,rgba(0,0,0,.8) 28%,rgba(0,0,0,.5) 52%,rgba(0,0,0,.25) 76%,transparent 100%)}
+.stage:after{bottom:0;background:linear-gradient(0deg,#000 0%,rgba(0,0,0,.8) 28%,rgba(0,0,0,.5) 52%,rgba(0,0,0,.25) 76%,transparent 100%)}
+.card.is-highlighted{filter:drop-shadow(0 0 3px rgba(110,159,163,.42)) drop-shadow(0 0 10px rgba(110,159,163,.22))}
+.search-dock{position:absolute;top:max(18px,env(safe-area-inset-top));right:20px;z-index:26000;display:flex;align-items:center;gap:8px}
+.search-toggle{width:38px;height:38px;border:0;border-radius:50%;background:transparent;color:rgba(220,232,232,.75);font-size:22px;cursor:pointer}
+.search-input{width:0;opacity:0;pointer-events:none;transition:width .28s ease,opacity .2s ease;border:1px solid rgba(110,159,163,.22);border-radius:22px;background:#050708;color:#e7eeee;padding:0;font:12px ui-monospace,monospace;outline:none}
+.search-input.open{width:190px;opacity:1;pointer-events:auto;padding:10px 14px}
+.search-input::placeholder{color:rgba(210,225,225,.35)}
