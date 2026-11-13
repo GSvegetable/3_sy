@@ -106,6 +106,9 @@ function render(now){
  }
 }
 function apply(el,g){
+ const highlighted=+el.dataset.i===searchHighlight&&performance.now()<searchHighlightUntil;
+ el.classList.toggle('is-highlighted',highlighted);
+ const press=el.classList.contains('is-pressed') ? 0.97 : 1;
  const state=el.classList.contains('normal')?(flips.get(+el.dataset.i)||null):null;
  const angle=state?state.angle:0,elev=state?state.elev:0;
  const arch=Math.sin(clamp(angle/180,0,1)*Math.PI)*12;
