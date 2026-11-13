@@ -104,18 +104,26 @@ function apply(el,g){
  el.style.opacity=String(g.alpha);el.style.zIndex=String(Math.round(g.z));
 }
 function down(e){
- if(e.target.closest('.card'))return;
- const x1=PAD+peak+W/2,x2=x1+W+GAP,dl=Math.abs(e.clientX-x1),dr=Math.abs(e.clientX-x2);
- const side=dl<=dr?'left':'right';if(Math.min(dl,dr)>W*.75)return;
+ // Match Android's root-level Initial-pass gesture detector: swipes may begin on a card.
+ const hitCard=e.target.closest?.('.card');
+ let side;
+ if(hitCard){
+  side=hitCard.classList.contains('gold')?'left':'right';
+ }else{
+  const x1=PAD+peak+W/2,x2=x1+W+GAP,dl=Math.abs(e.clientX-x1),dr=Math.abs(e.clientX-x2);
+  if(Math.min(dl,dr)>W*.75)return;
+  side=dl<=dr?'left':'right';
+ }
  if(side==='left'){ld=true;lv=0;lt=lo;}else{rd=true;rv=0;rt=ro;}
  gesture={id:e.pointerId,side,x:e.clientX,y:e.clientY,lastY:e.clientY,lastTime:performance.now(),switched:false};
- stage.setPointerCapture?.(e.pointerId);
+ // Keep card pointer capture on the card so its click/flip handling remains intact.
+ if(!hitCard)stage.setPointerCapture?.(e.pointerId);
 }
 function move(e){
  if(!gesture||gesture.id!==e.pointerId)return;
  const dx=e.clientX-gesture.x,dy=e.clientY-gesture.y,now=performance.now();
  if(!gesture.switched&&Math.abs(dx)>W*1.5&&Math.abs(dx)>Math.abs(dy)*1.5){
-  gesture.switched=true;setPreset(preset+(dx<0?1:-1));e.preventDefault();return;
+  gesture.switched=true;setPreset(preset+(dx>0?1:-1));e.preventDefault();return;
  }
  if(Math.abs(dy)<=Math.abs(dx)*1.5)return;
  const delta=e.clientY-gesture.lastY,dt=Math.max(8,now-gesture.lastTime);
