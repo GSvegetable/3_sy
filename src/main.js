@@ -162,7 +162,6 @@ function cardUp(e){
   const target=Math.abs(e.clientX-x1)<=Math.abs(e.clientX-x2)?0:1;
   orders[g.side==='left'?0:1]=orders[g.side==='left'?0:1].filter(i=>i!==g.index);
   if(!orders[target].includes(g.index))orders[target].push(g.index);
-  orders[0].sort((a,b)=>a-b);orders[1].sort((a,b)=>a-b);
   flipped.delete(g.index);measure();build();
  }else if(g.moved)g.el.dataset.dragged='1';
  cardHold=null;
