@@ -25,3 +25,5 @@ body{overscroll-behavior:none}
 .gold-label{display:block;margin-bottom:5px;font:700 8px/1 ui-monospace,monospace;letter-spacing:1.8px;color:rgba(110,159,163,.85)}
 .glaze{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06) 42%,transparent 72%)}
 @media(prefers-reduced-motion:reduce){.inner{transition-duration:.01ms!important}}
+
+.card.is-dragging{position:fixed!important;z-index:30000!important;filter:drop-shadow(0 22px 24px rgba(0,0,0,.42))}
