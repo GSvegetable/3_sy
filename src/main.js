@@ -40,8 +40,13 @@ function bind(el){
  el.addEventListener('pointerdown',e=>cardDown(e,el));
  el.addEventListener('click',()=>{
   if(el.dataset.dragged==='1'){el.dataset.dragged='0';return;}
-  if(flipped.has(i))flipped.delete(i);else flipped.add(i);
-  stage.querySelectorAll('.card[data-i="'+i+'"]').forEach(n=>n.classList.toggle('flipped',flipped.has(i)));
+  const opening=!flipped.has(i);
+  if(opening)flipped.add(i);else flipped.delete(i);
+  stage.querySelectorAll('.card[data-i="'+i+'"]').forEach(n=>{
+   n.classList.toggle('flipped',opening);
+   n.classList.toggle('unflipping',!opening);
+   if(!opening)window.setTimeout(()=>n.classList.remove('unflipping'),780);
+  });
   hapticTick(.65);
  });
 }
@@ -148,6 +153,7 @@ stage.addEventListener('wheel',e=>{
 function cardDown(e,el){
  if(e.button!==undefined&&e.button!==0)return;
  const rect=el.getBoundingClientRect(),g={id:e.pointerId,el,index:+el.dataset.i,side:el.classList.contains('gold')?'left':'right',x:e.clientX,y:e.clientY,rect,moved:false,active:false,timer:0};
+ el.classList.add('is-pressed');
  cardHold=g;
  g.timer=setTimeout(()=>{
   if(cardHold!==g||g.moved)return;
@@ -165,6 +171,7 @@ function cardMove(e){
 function cardUp(e){
  const g=cardHold;if(!g||g.id!==e.pointerId)return;
  clearTimeout(g.timer);
+ g.el.classList.remove('is-pressed');
  if(g.active){
   const x1=PAD+peak+W/2,x2=x1+W+GAP;
   const target=Math.abs(e.clientX-x1)<=Math.abs(e.clientX-x2)?0:1;
