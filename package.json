@@ -1,5 +1,5 @@
 {
-  "name":"3-sy-workspace","private":true,"version":"0.5.0","type":"module",
+  "name":"3-sy-workspace","private":true,"version":"0.5.1","type":"module",
   "scripts":{"dev":"vite --host 0.0.0.0","build":"vite build","preview":"vite preview --host 0.0.0.0","android:sync":"cap sync android","android:open":"cap open android"},
   "dependencies":{"@capacitor/android":"^7.4.3","@capacitor/core":"^7.4.3","@capacitor/haptics":"^7.0.1"},
   "devDependencies":{"@capacitor/cli":"^7.4.3","vite":"^6.4.1"}
