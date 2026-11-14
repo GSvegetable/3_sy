@@ -1,151 +1,34 @@
-/* 状态切换改为全屏横向手势；不再显示状态点或倾斜控制。 */
+/* 横向状态切换；左侧大轨位于上层。 */
+.stage{perspective:none}.tilt-layer{position:absolute;inset:0;z-index:1;pointer-events:none}
+.rail-back{z-index:3}.rail-front{z-index:2}
+.face.front{background:linear-gradient(180deg,#fff 0%,#f0f5f4 100%);box-shadow:0 22px 44px -18px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.3)}
+.face.back{background:linear-gradient(180deg,#f2f6f5 0%,#e3ebea 100%)}
+.face.front .cast{height:40%;background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.14) 33%,rgba(0,0,0,.04) 66%,transparent)}
+.face.front .eyebrow{left:12%;top:12.1%;font-size:calc(var(--card-w,150px)*.06);color:rgba(0,0,0,.42)}
+.face.front .copy{left:12%;right:8%;bottom:12.1%}.face.front .copy h2{color:#0a0a0a;letter-spacing:-.03em}
+.face.front .copy p{font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-style:normal;font-weight:500;font-size:calc(var(--card-w,150px)*.06);letter-spacing:.08em;color:rgba(0,0,0,.52)}
 
-/* ============================================================
-   按原生源码对齐的结构与材质
-   ============================================================ */
-
-/* 透视改由整组倾斜层自带（对应原生 graphicsLayer.cameraDistance） */
-.stage { perspective: none; }
-
-.tilt-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-}
-
-/* 左轨（青瓷）压在右轨（白卡）之上，与原生绘制顺序一致 */
-.rail-back  { z-index: 3; }
-.rail-front { z-index: 2; }
-
-/* —— 白卡（右轨）：纯白纵向渐变，标题近黑衬线，副标无衬线非斜体 —— */
-.face.front {
-  background: linear-gradient(180deg, #ffffff 0%, #f0f5f4 100%);
-  box-shadow: 0 22px 44px -18px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-.face.back {
-  background: linear-gradient(180deg, #f2f6f5 0%, #e3ebea 100%);
-}
-.face.front .cast {
-  height: 40%;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.30) 0%, rgba(0, 0, 0, 0.14) 33%, rgba(0, 0, 0, 0.04) 66%, transparent 100%);
-}
-.face.front .eyebrow { left: 12%; top: 12.1%; font-size: calc(var(--card-w, 150px) * 0.06); color: rgba(0, 0, 0, 0.42); }
-.face.front .copy    { left: 12%; right: 8%; bottom: 12.1%; }
-.face.front .copy h2 { color: #0a0a0a; letter-spacing: -0.03em; }
-.face.front .copy p {
-  font-family: "Noto Sans SC", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-style: normal;
-  font-weight: 500;
-  font-size: calc(var(--card-w, 150px) * 0.06);
-  letter-spacing: 0.08em;
-  color: rgba(0, 0, 0, 0.52);
-}
-
-/* —— 青瓷 Liquid Glass：透光底色、环境雾化、曲面高光与折射边缘 —— */
-.face.porcelain,
-.face.porcelain-back {
-  position: absolute;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: calc(var(--card-radius, 12px) * 1.5);
-  border: 1px solid rgba(232, 255, 252, 0.52);
-  background:
-    radial-gradient(115% 85% at 8% 0%, rgba(255, 255, 255, 0.54) 0%, rgba(232, 255, 252, 0.20) 24%, transparent 58%),
-    linear-gradient(138deg, rgba(201, 239, 235, 0.46) 0%, rgba(104, 164, 164, 0.25) 46%, rgba(26, 72, 78, 0.38) 100%),
-    rgba(114, 170, 169, 0.20);
-  -webkit-backdrop-filter: blur(24px) saturate(1.85) contrast(1.12) brightness(1.10);
-  backdrop-filter: blur(24px) saturate(1.85) contrast(1.12) brightness(1.10);
-  box-shadow:
-    0 26px 52px -22px rgba(0, 0, 0, 0.62),
-    0 8px 24px rgba(45, 119, 121, 0.18),
-    inset 0 1.4px 0 rgba(255, 255, 255, 0.88),
-    inset 1px 0 0 rgba(255, 255, 255, 0.32),
-    inset -1px 0 0 rgba(37, 91, 94, 0.16),
-    inset 0 -22px 34px -26px rgba(13, 64, 69, 0.72);
-}
-.face.porcelain-back {
-  background:
-    radial-gradient(120% 85% at 92% 0%, rgba(232, 255, 252, 0.36), transparent 54%),
-    linear-gradient(145deg, rgba(113, 177, 175, 0.52), rgba(22, 66, 72, 0.62));
-}
-.face.porcelain::before,
-.face.porcelain::after,
-.face.porcelain-back::before,
-.face.porcelain-back::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-}
-.face.porcelain::before,
-.face.porcelain-back::before {
-  z-index: 1;
-  background:
-    radial-gradient(95% 58% at 4% -8%, rgba(255, 255, 255, 0.62), transparent 64%),
-    linear-gradient(116deg,
-      transparent 12%,
-      rgba(255, 255, 255, 0.30) 23%,
-      rgba(255, 255, 255, 0.07) 31%,
-      transparent 43%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 36%, rgba(37, 111, 113, 0.10));
-  mix-blend-mode: screen;
-}
-.face.porcelain::after,
-.face.porcelain-back::after {
-  z-index: 3;
-  border: 1px solid rgba(235, 255, 252, 0.38);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.76),
-    inset 1px 0 0 rgba(255, 255, 255, 0.20),
-    inset -1px 0 0 rgba(255, 255, 255, 0.08),
-    inset 0 -1px 0 rgba(104, 171, 169, 0.28),
-    inset 0 0 18px rgba(230, 255, 252, 0.10);
-}
-.face.porcelain > .cast,
-.face.porcelain-back > .cast { display: none; }
-.face.porcelain > .eyebrow,
-.face.porcelain > .copy,
-.face.porcelain-back > .back-mark {
-  z-index: 2;
-}
-.face.porcelain .eyebrow {
-  left: 10.7%;
-  top: auto;
-  bottom: calc(var(--card-h, 132px) * 0.405);
-  font-size: calc(var(--card-w, 150px) * 0.053);
-  letter-spacing: 0.22em;
-  color: rgba(28, 77, 80, 0.82);
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
-}
-.face.porcelain .copy { left: 10.7%; right: 8%; bottom: 9.1%; }
-.face.porcelain .copy h2 {
-  font-size: calc(var(--card-w, 150px) * 0.147);
-  letter-spacing: -0.03em;
-  color: #17383b;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
-}
-.face.porcelain .copy p {
-  font-family: "Noto Sans SC", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-style: italic;
-  font-weight: 500;
-  font-size: calc(var(--card-w, 150px) * 0.06);
-  letter-spacing: 0.04em;
-  color: rgba(35, 100, 102, 0.90);
-}
-.face.porcelain-back .back-mark {
-  color: rgba(236, 255, 251, 0.82);
-  text-shadow: 0 1px 8px rgba(190, 255, 247, 0.28);
-}
- 
-/* 抽卡后轨道剩余卡片以旧位置为起点，柔和补齐空位。 */
-.card.is-reflowing {
-  transition:
-    transform 390ms cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 260ms ease;
-}
-.card.free .inner {
-  transform-style: preserve-3d;
-  transform-origin: 50% 50%;
-}
+/* 中性透明 Liquid Glass：透明底，不叠加青、蓝或其他有色膜层 */
+.face.porcelain,.face.porcelain-back{position:absolute;isolation:isolate;overflow:hidden;border-radius:calc(var(--card-radius,12px)*1.5);
+ border:1px solid rgba(255,255,255,.42);background:rgba(255,255,255,.025);
+ -webkit-backdrop-filter:blur(1.8px) saturate(1.22) contrast(1.08);backdrop-filter:blur(1.8px) saturate(1.22) contrast(1.08);
+ box-shadow:0 24px 48px -22px rgba(0,0,0,.72),0 2px 10px rgba(255,255,255,.055),inset 0 1.2px 0 rgba(255,255,255,.72),
+ inset 1px 0 0 rgba(255,255,255,.22),inset -1px 0 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(255,255,255,.24)}
+.face.porcelain-back{background:rgba(255,255,255,.018);-webkit-backdrop-filter:blur(2.2px) saturate(1.16) contrast(1.06);backdrop-filter:blur(2.2px) saturate(1.16) contrast(1.06)}
+.face.porcelain::before,.face.porcelain::after,.face.porcelain-back::before,.face.porcelain-back::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none}
+/* 曲面边缘反射与窄高光，营造透镜式亮度变化 */
+.face.porcelain::before,.face.porcelain-back::before{z-index:1;background:
+ radial-gradient(110% 62% at 0% 0%,rgba(255,255,255,.24),transparent 62%),
+ radial-gradient(90% 55% at 100% 100%,rgba(255,255,255,.085),transparent 68%),
+ linear-gradient(112deg,transparent 0%,rgba(255,255,255,.16) 17%,rgba(255,255,255,.025) 23%,transparent 34%,transparent 76%,rgba(255,255,255,.07) 88%,transparent 100%);mix-blend-mode:screen}
+.face.porcelain::after,.face.porcelain-back::after{z-index:3;border:1px solid rgba(255,255,255,.28);box-shadow:
+ inset 0 1px 0 rgba(255,255,255,.64),inset 1px 0 0 rgba(255,255,255,.18),inset -1px 0 0 rgba(255,255,255,.12),
+ inset 0 -1px 0 rgba(255,255,255,.18),inset 0 0 14px rgba(255,255,255,.045)}
+.face.porcelain>.cast,.face.porcelain-back>.cast{display:none}
+.face.porcelain>.eyebrow,.face.porcelain>.copy,.face.porcelain-back>.back-mark{z-index:2}
+.face.porcelain .eyebrow{left:10.7%;top:auto;bottom:calc(var(--card-h,132px)*.405);font-size:calc(var(--card-w,150px)*.053);letter-spacing:.22em;color:rgba(255,255,255,.68);text-shadow:0 1px 5px rgba(0,0,0,.45)}
+.face.porcelain .copy{left:10.7%;right:8%;bottom:9.1%}
+.face.porcelain .copy h2{font-size:calc(var(--card-w,150px)*.147);letter-spacing:-.03em;color:rgba(255,255,255,.94);text-shadow:0 1px 8px rgba(0,0,0,.42)}
+.face.porcelain .copy p{font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-style:normal;font-weight:500;font-size:calc(var(--card-w,150px)*.06);letter-spacing:.04em;color:rgba(255,255,255,.72);text-shadow:0 1px 6px rgba(0,0,0,.42)}
+.face.porcelain-back .back-mark{color:rgba(255,255,255,.78);text-shadow:0 1px 8px rgba(255,255,255,.18)}
+.card.is-reflowing{transition:transform 390ms cubic-bezier(.22,1,.36,1),opacity 260ms ease}
