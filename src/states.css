@@ -7,30 +7,58 @@
 .face.front .eyebrow{left:12%;top:12.1%;font-size:calc(var(--card-w,150px)*.06);color:rgba(0,0,0,.42)}
 .face.front .copy{left:12%;right:8%;bottom:12.1%}.face.front .copy h2{color:#0a0a0a;letter-spacing:-.03em}
 .face.front .copy p{font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-style:normal;font-weight:500;font-size:calc(var(--card-w,150px)*.06);letter-spacing:.08em;color:rgba(0,0,0,.52)}
-
-/* 中性透明 Liquid Glass：透明底，不叠加青、蓝或其他有色膜层 */
-.face.porcelain,.face.porcelain-back{position:absolute;isolation:isolate;overflow:hidden;border-radius:calc(var(--card-radius,12px)*1.5);
- border:1px solid rgba(255,255,255,.42);background:rgba(255,255,255,.025);
- -webkit-backdrop-filter:blur(1.8px) saturate(1.22) contrast(1.08);backdrop-filter:blur(1.8px) saturate(1.22) contrast(1.08);
- -webkit-backdrop-filter:url(#liquid-glass-refraction) blur(1.8px) saturate(1.22) contrast(1.08);
- backdrop-filter:url(#liquid-glass-refraction) blur(1.8px) saturate(1.22) contrast(1.08);
- box-shadow:0 24px 48px -22px rgba(0,0,0,.72),0 2px 10px rgba(255,255,255,.055),inset 0 1.2px 0 rgba(255,255,255,.72),
- inset 1px 0 0 rgba(255,255,255,.22),inset -1px 0 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(255,255,255,.24)}
-.face.porcelain-back{background:rgba(255,255,255,.018);-webkit-backdrop-filter:blur(2.2px) saturate(1.16) contrast(1.06);backdrop-filter:blur(2.2px) saturate(1.16) contrast(1.06)}
-.face.porcelain::before,.face.porcelain::after,.face.porcelain-back::before,.face.porcelain-back::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none}
-/* 曲面边缘反射与窄高光，营造透镜式亮度变化 */
-.face.porcelain::before,.face.porcelain-back::before{z-index:1;background:
- radial-gradient(110% 62% at 0% 0%,rgba(255,255,255,.24),transparent 62%),
- radial-gradient(90% 55% at 100% 100%,rgba(255,255,255,.085),transparent 68%),
- linear-gradient(112deg,transparent 0%,rgba(255,255,255,.16) 17%,rgba(255,255,255,.025) 23%,transparent 34%,transparent 76%,rgba(255,255,255,.07) 88%,transparent 100%);mix-blend-mode:screen}
-.face.porcelain::after,.face.porcelain-back::after{z-index:3;border:1px solid rgba(255,255,255,.28);box-shadow:
- inset 0 1px 0 rgba(255,255,255,.64),inset 1px 0 0 rgba(255,255,255,.18),inset -1px 0 0 rgba(255,255,255,.12),
- inset 0 -1px 0 rgba(255,255,255,.18),inset 0 0 14px rgba(255,255,255,.045)}
+/* 左轨：无色透明玻璃。避免厚白描边，以透光层次、边缘折射感和局部反射建立材质。 */
+.face.porcelain,.face.porcelain-back{
+ position:absolute;isolation:isolate;overflow:hidden;
+ border:0;
+ border-radius:calc(var(--card-radius,12px)*1.5);
+ background:rgba(255,255,255,.035);
+ -webkit-backdrop-filter:blur(4px) saturate(1.42) contrast(1.06);
+ backdrop-filter:blur(4px) saturate(1.42) contrast(1.06);
+ box-shadow:
+   0 18px 42px -25px rgba(0,0,0,.78),
+   inset 0 0 0 .5px rgba(255,255,255,.10),
+   inset 0 1px 2px rgba(255,255,255,.18),
+   inset 0 -8px 18px rgba(0,0,0,.10);
+}
+.face.porcelain-back{
+ background:rgba(255,255,255,.025);
+ -webkit-backdrop-filter:blur(4.5px) saturate(1.35) contrast(1.05);
+ backdrop-filter:blur(4.5px) saturate(1.35) contrast(1.05);
+}
+.face.porcelain::before,.face.porcelain-back::before{
+ content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
+ /* 不画完整白框：只在光线方向形成不连续的柔和反射 */
+ background:
+  radial-gradient(115% 52% at 8% 0%,rgba(255,255,255,.22),transparent 62%),
+  radial-gradient(90% 70% at 100% 100%,rgba(255,255,255,.075),transparent 72%),
+  linear-gradient(116deg,transparent 0%,rgba(255,255,255,.11) 18%,rgba(255,255,255,.018) 25%,transparent 37%),
+  linear-gradient(180deg,rgba(255,255,255,.12),transparent 13%,transparent 82%,rgba(0,0,0,.10));
+}
+.face.porcelain::after,.face.porcelain-back::after{
+ content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;z-index:3;
+ /* 局部边缘高光，不使用整圈描边 */
+ background:
+  linear-gradient(180deg,rgba(255,255,255,.26),transparent 10%) top/100% 28% no-repeat,
+  linear-gradient(90deg,rgba(255,255,255,.12),transparent 8%) left/14% 100% no-repeat;
+ opacity:.52;
+}
 .face.porcelain>.cast,.face.porcelain-back>.cast{display:none}
 .face.porcelain>.eyebrow,.face.porcelain>.copy,.face.porcelain-back>.back-mark{z-index:2}
-.face.porcelain .eyebrow{left:10.7%;top:auto;bottom:calc(var(--card-h,132px)*.405);font-size:calc(var(--card-w,150px)*.053);letter-spacing:.22em;color:rgba(255,255,255,.68);text-shadow:0 1px 5px rgba(0,0,0,.45)}
+.face.porcelain .eyebrow{
+ left:10.7%;top:auto;bottom:calc(var(--card-h,132px)*.405);
+ font-size:calc(var(--card-w,150px)*.053);letter-spacing:.22em;
+ color:rgba(255,255,255,.68);text-shadow:0 1px 5px rgba(0,0,0,.48)
+}
 .face.porcelain .copy{left:10.7%;right:8%;bottom:9.1%}
-.face.porcelain .copy h2{font-size:calc(var(--card-w,150px)*.147);letter-spacing:-.03em;color:rgba(255,255,255,.94);text-shadow:0 1px 8px rgba(0,0,0,.42)}
-.face.porcelain .copy p{font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-style:normal;font-weight:500;font-size:calc(var(--card-w,150px)*.06);letter-spacing:.04em;color:rgba(255,255,255,.72);text-shadow:0 1px 6px rgba(0,0,0,.42)}
+.face.porcelain .copy h2{
+ font-size:calc(var(--card-w,150px)*.147);letter-spacing:-.03em;
+ color:rgba(255,255,255,.94);text-shadow:0 1px 8px rgba(0,0,0,.46)
+}
+.face.porcelain .copy p{
+ font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+ font-style:normal;font-weight:500;font-size:calc(var(--card-w,150px)*.06);
+ letter-spacing:.04em;color:rgba(255,255,255,.72);text-shadow:0 1px 6px rgba(0,0,0,.46)
+}
 .face.porcelain-back .back-mark{color:rgba(255,255,255,.78);text-shadow:0 1px 8px rgba(255,255,255,.18)}
 .card.is-reflowing{transition:transform 390ms cubic-bezier(.22,1,.36,1),opacity 260ms ease}
