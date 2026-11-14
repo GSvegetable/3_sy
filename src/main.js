@@ -111,7 +111,7 @@ function setPreset(next) {
     from: { peak: state.peak, curve: state.curve, tilt: state.tilt },
     to: target,
     started: now,
-    duration: clamp(850 + distance * 0.34, 900, 1150),
+    duration: clamp(1050 + distance * 0.42, 1100, 1350),
   };
   // 第三个预设沿用原生双轨换位编排：小轨先沉下，随后两轨交错换位并反转弧向，最后小轨从下方归位。
   if (enteringRight || leavingRight) {
@@ -126,15 +126,21 @@ function setPreset(next) {
   state.presetIndex = next;
   hapticReverse();
 
-  // 波纹放慢，与整组移动节奏一致
-  const { padLeft, groupW, focusY } = state.layout;
-  scene.startRipple(padLeft + groupW / 2 + peakPx(target.peak), focusY, target.curve);
+  // 状态切换只保留轨道本身的空间运动，不再叠加光圈或波纹。
   updateStatus();
 }
 
-/** 五次 smoothstep：起步和收尾都柔和，中段匀顺，不产生突兀过冲。 */
+/** 正弦缓入缓出：起步、收尾柔和，中段自然提速。 */
 function smoothStep5(t) {
-  return t * t * t * (t * (t * 6 - 15) + 10);
+  return 0.5 - 0.5 * Math.cos(Math.PI * clamp(t, 0, 1));
+}
+
+/** 轻微甩出再回正，专门用于双轨换位，不做整条轨道下沉消失。 */
+function easeOutBack(t) {
+  const c1 = 1.25;
+  const c3 = c1 + 1;
+  const x = clamp(t, 0, 1) - 1;
+  return 1 + c3 * x * x * x + c1 * x * x;
 }
 
 function updateStatus() {
@@ -328,7 +334,7 @@ function buildView() {
   return {
     layout: state.layout,
     trackShift: state.trackShift || 0,
-    smallTrackY: state.smallTrackY || 0,
+    trackWhipY: state.trackWhipY || 0,
     arcDirection: state.arcDirection || 1,
     backOrder: state.backOrder,
     frontOrder: state.frontOrder,
@@ -370,21 +376,20 @@ function frame(now) {
     }
   }
 
-  // 原生双轨换位时序：小轨下沉 600ms；260ms 后开始换位/反转弧向；再从下方归位。
+  // 双轨甩位：两轨始终留在画面内，先轻微错层，再快速交叉换位并柔和回正。
   if (state.trackMotion) {
     const motion = state.trackMotion;
     const elapsed = now - motion.started;
-    const down = smoothStep5(clamp(elapsed / 600, 0, 1));
-    const swap = smoothStep5(clamp((elapsed - 260) / 600, 0, 1));
-    const rise = smoothStep5(clamp((elapsed - 860) / 600, 0, 1));
-    const hiddenY = state.layout.vh + state.layout.cardH * 2;
-    state.smallTrackY = hiddenY * (down * (1 - rise));
-    state.trackShift = motion.from + (motion.to - motion.from) * swap;
-    state.arcDirection = motion.directionFrom + (motion.directionTo - motion.directionFrom) * swap;
-    if (elapsed >= 1460) {
+    const t = clamp(elapsed / 980, 0, 1);
+    const flick = easeOutBack(t);
+    const settle = smoothStep5(t);
+    state.trackShift = motion.from + (motion.to - motion.from) * flick;
+    state.arcDirection = motion.directionFrom + (motion.directionTo - motion.directionFrom) * settle;
+    state.trackWhipY = Math.sin(Math.PI * t) * (motion.to > motion.from ? -16 : 16) * state.layout.u;
+    if (t >= 1) {
       state.trackShift = motion.to;
       state.arcDirection = motion.directionTo;
-      state.smallTrackY = 0;
+      state.trackWhipY = 0;
       state.trackMotion = null;
     }
   }
