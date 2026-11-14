@@ -104,18 +104,19 @@ export function attachGestures(stage, handlers) {
       el,
       index,
       side,
+      copy: Number(el.dataset.copy),
       key: `${el.dataset.i}_${el.dataset.copy}`,
       startX: event.clientX,
       startY: event.clientY,
       startTime: performance.now(),
       moved: false,
+      longPressed: false,
       extracted: false,
     };
-    handlers.onPress(hold.key, true);
+    // 长按只进入待抽出状态；手指真正开始移动后才把卡片从轨道中取出。
     hold.timer = window.setTimeout(() => {
       if (!hold || hold.moved || hold.extracted) return;
-      hold.extracted = true;
-      handlers.onExtractStart(hold.index, hold.el);
+      hold.longPressed = true;
     }, LONG_PRESS_MS);
   };
 
@@ -123,13 +124,17 @@ export function attachGestures(stage, handlers) {
     if (!hold || hold.id !== event.pointerId) return;
     const dx = event.clientX - hold.startX;
     const dy = event.clientY - hold.startY;
-    if (!hold.moved && Math.hypot(dx, dy) > touchSlop()) {
+    const distance = Math.hypot(dx, dy);
+    if (!hold.moved && distance > touchSlop()) {
       hold.moved = true;
       window.clearTimeout(hold.timer);
-      handlers.onPress(hold.key, false);
+      if (hold.longPressed) {
+        hold.extracted = true;
+        handlers.onExtractStart(hold.index, hold.el, hold.side, hold.copy);
+      }
     }
     if (hold.extracted) {
-      handlers.onExtractMove(event.clientX - hold.startX, event.clientY - hold.startY);
+      handlers.onExtractMove(dx, dy);
       event.preventDefault();
     }
   };
@@ -138,12 +143,10 @@ export function attachGestures(stage, handlers) {
     if (!hold || hold.id !== event.pointerId) return;
     const elapsed = performance.now() - hold.startTime;
     window.clearTimeout(hold.timer);
-    handlers.onPress(hold.key, false);
-
     if (hold.extracted) {
       handlers.onExtractEnd(event.clientX, event.clientY);
     } else if (!hold.moved && elapsed < TAP_MAX_MS) {
-      handlers.onTap(hold.index, hold.side);
+      handlers.onTap(hold.index, hold.side, hold.copy);
     }
     hold = null;
   };
