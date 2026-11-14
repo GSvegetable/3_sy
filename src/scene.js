@@ -1,5 +1,5 @@
 /**
- * 场景层：负责轨道 DOM 的构建、卡片几何的应用，以及预设切换时的波纹转场。
+ * 场景层：负责轨道 DOM 的构建、卡片几何的应用与双轨层级命中。
  *
  * 双轨结构（对照原生源码与参考视频）：
  *   后轨（左）= 青瓷磨砂玻璃卡面，偶数序号卡片，不翻面，压在上层；
@@ -9,18 +9,13 @@
 import { CARD_CONTENTS, CAMERA_DP } from './data.js';
 import { cardGeometry, clamp } from './layout.js';
 
-const RIPPLE_DURATION = 1300;
-const RIPPLE_SPREAD = 1.35;
-
 export class Scene {
   constructor(stage) {
     this.stage = stage;
     this.railBack = stage.querySelector('#railBack');
     this.railFront = stage.querySelector('#railFront');
-    this.rippleRing = null;
     this.flips = new Map();
     this.cards = [];
-    this.ripple = null;
 
     // 整组倾斜层：两条轨道一起旋转，背景幽灵字不参与
     this.layer = document.createElement('div');
@@ -204,15 +199,6 @@ export class Scene {
     }
   }
 
-  /** 开始一次波纹转场（预设切换时调用）。 */
-  startRipple(cx, cy, direction) {
-    this.ripple = { start: performance.now(), cx, cy, direction };
-    if (this.rippleRing) {
-      this.rippleRing.style.left = `${cx}px`;
-      this.rippleRing.style.top = `${cy}px`;
-    }
-  }
-
   /**
    * 把当前状态落到 DOM 上。
    * view: { layout, backOrder, frontOrder, backOffset, frontOffset, backShift,
@@ -242,7 +228,6 @@ export class Scene {
       ? `perspective(${CAMERA_DP * layout.u}px) rotateY(${view.tiltDeg}deg)`
       : 'none';
 
-    const rippleState = this.rippleState();
 
     for (const rec of this.cards) {
       const isBack = rec.side === 'back';
@@ -314,28 +299,8 @@ export class Scene {
       }
       el.classList.toggle('is-highlighted', highlight === 1);
 
-      // 波纹：光带扫过卡片时，靠近波前的部分提亮
-      if (rippleState) {
-        const dist = Math.hypot(originX - rippleState.cx, originY - rippleState.cy);
-        const band = Math.exp(-(((dist - rippleState.radius) / (70 * layout.u)) ** 2));
-        const glow = band * rippleState.strength;
-        el.style.setProperty('--glow', glow.toFixed(3));
-        el.style.setProperty('--glow-x', `${(rippleState.cx - originX + layout.cardW / 2).toFixed(1)}px`);
-        el.style.setProperty('--glow-y', `${(rippleState.cy - originY + layout.cardH / 2).toFixed(1)}px`);
-      } else if (rec.glowApplied) {
-        el.style.setProperty('--glow', '0');
-        rec.glowApplied = false;
-      }
-      if (rippleState) rec.glowApplied = true;
     }
 
-    if (rippleState && this.rippleRing) {
-      const k = rippleState.radius / 26;
-      this.rippleRing.style.transform = `translate(-50%, -50%) scale(${k})`;
-      this.rippleRing.style.opacity = String(rippleState.ringAlpha);
-    } else if (this.rippleRing) {
-      this.rippleRing.style.opacity = '0';
-    }
   }
 
   /**
@@ -358,28 +323,6 @@ export class Scene {
     return back <= front ? 0 : 1;
   }
 
-  rippleState() {
-    if (!this.ripple) return null;
-    const elapsed = performance.now() - this.ripple.start;
-    const t = clamp(elapsed / RIPPLE_DURATION, 0, 1);
-    if (t >= 1) {
-      this.ripple = null;
-      return null;
-    }
-    const layout = this.layout;
-    const spread = Math.max(layout.vw, layout.vh) * RIPPLE_SPREAD;
-    const ease = 1 - (1 - t) * (1 - t);
-    const radius = 40 * layout.u + this.ripple.direction * 0 + spread * ease;
-    const strength =
-      t < 0.08 ? t / 0.08 : t < 0.7 ? 1 : clamp((1 - t) / 0.3, 0, 1);
-    return {
-      cx: this.ripple.cx,
-      cy: this.ripple.cy,
-      radius,
-      strength,
-      ringAlpha: strength * 0.85,
-    };
-  }
 }
 
 /** 层级：轨道内按距离焦点的远近排序，上方的卡片压住下方的卡片，副本越靠前越靠下。 */
