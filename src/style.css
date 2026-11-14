@@ -268,24 +268,6 @@ body {
   background: linear-gradient(0deg, #000 0%, rgba(0, 0, 0, 0.82) 26%, rgba(0, 0, 0, 0.5) 52%, rgba(0, 0, 0, 0.24) 78%, transparent 100%);
 }
 
-/* ---------------------------------------------------------- 波纹冲击环 */
-
-.ripple-ring {
-  position: absolute;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 25;
-  opacity: 0;
-  will-change: transform, opacity;
-  box-shadow:
-    0 0 0 1px rgba(190, 224, 242, 0.7),
-    0 0 34px 10px rgba(110, 160, 200, 0.22),
-    inset 0 0 18px rgba(150, 190, 220, 0.18);
-  transform: translate(-50%, -50%);
-}
-
 /* ------------------------------------------------------------ 状态字 */
 
 .status {
