@@ -78,8 +78,7 @@ src/
 
 这是基于 Android 源码重写的 Web 实现，不是把 Jetpack Compose 直接跑在浏览器里。
 
-- 原生的 AGSL `RuntimeShader`（翻面形变、香槟霜面、玻璃波纹）无法由 CSS 等价复刻：翻面用 `rotateX` + 弹簧近似，
-  玻璃材质以透明层、`backdrop-filter` 与边缘高光近似。
+- 原生的 AGSL `RuntimeShader`（翻面形变、香槟霜面、玻璃波纹）无法由 CSS 等价复刻：翻面用 `rotateX` + 弹簧近似；玻璃通过背景快照、网格采样位移与局部高光模拟实时折射。
 - 原生的 Kyant Backdrop 真实折射 / 镜头色散以 CSS `backdrop-filter` 与高光边缘近似，无法做到逐像素一致。
 - 原生重力传感器只调高光强度，网页端没有对应的高光层，不使用。
 - 原生 `cameraDistance` 的换算按「默认 8 英寸 ≈ 1280dp」估算，实际观感可能需要微调 `CAMERA_DP`。
