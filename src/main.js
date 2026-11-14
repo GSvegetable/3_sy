@@ -2,15 +2,15 @@
  * 3_sy — 双轨卡片空间（Web / Capacitor 版）
  *
  * 按参考视频实现：
- *   · 前轨（左）白色卡面、后轨（右）青瓷卡面，两条轨道都循环滚动；
- *   · 前轨点击翻面，青瓷轨不翻面；
- *   · 三个状态（底部三个小点）：整组推到左侧之外 / 贴左 / 贴右，
- *     横滑或点小点切换，位置、曲率、倾角一起走弹簧过冲，同时有一道波纹扫过；
+ *   · 左轨青瓷磨砂卡（偶数序号，不翻面，压在上层），右轨白卡（奇数序号，点击翻面），两轨都循环滚动；
+ *   · 三个状态（底部三个小点）的 peak / curve / tilt 与原生预设一致，
+ *     横滑或点小点切换，三个量各走一条弹簧（阻尼 0.82、刚度 200，与原生一致），同时有一道波纹扫过；
+ *   · 倾斜作用在整组上：rotateY = 读数 × 0.48°，旋转原点随读数左右移动；
  *   · 底部「倾斜」滑条显示并可手动覆盖当前倾角读数。
  */
 import './style.css';
 import './states.css';
-import { CARD_CONTENTS, PRESETS, INITIAL_PRESET, TILT_TO_DEG } from './data.js';
+import { CARD_CONTENTS, PRESETS, INITIAL_PRESET, TILT_ROT, TILT_ORIGIN } from './data.js';
 import { findBestMatch } from './search.js';
 import { createLayout, clamp } from './layout.js';
 import { Scene } from './scene.js';
@@ -23,16 +23,20 @@ const searchToggle = document.querySelector('#searchToggle');
 const searchInput = document.querySelector('#searchInput');
 const statusLabel = document.querySelector('#statusLabel');
 
-/** 后轨（右）= 奇数序号卡片，前轨（左）= 偶数序号卡片。 */
+/** 后轨（左，青瓷）= 偶数序号卡片，前轨（右，白）= 奇数序号卡片。 */
 const state = {
   layout: null,
   presetIndex: INITIAL_PRESET,
+  // 三个弹簧量：x 当前值，v 速度；peak 单位 dp，tilt 为原生读数
+  peak: PRESETS[INITIAL_PRESET].peak,
+  peakV: 0,
   curve: PRESETS[INITIAL_PRESET].curve,
-  tilt: PRESETS[INITIAL_PRESET].tilt, // 「倾斜」读数（原生单位）
-  tiltLocked: false, // 用户拖过滑条后，转场不再覆盖倾角，直到下一次切换状态
-  shift: 0,
-  backOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 1),
-  frontOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 0),
+  curveV: 0,
+  tilt: PRESETS[INITIAL_PRESET].tilt,
+  tiltV: 0,
+  tiltLocked: false, // 用户拖过滑条后，倾角弹簧不再追预设，直到下一次切换状态
+  backOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 0),
+  frontOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 1),
   backOffset: 0,
   frontOffset: 0,
   backTarget: 0,
@@ -50,8 +54,6 @@ const state = {
   highlightIndex: -1,
   highlightUntil: 0,
   searchMotion: null,
-  anim: null,
-  sensorTilt: 0,
   free: null,
   lastStepBack: 0,
   lastStepFront: 0,
@@ -127,45 +129,42 @@ function measure() {
 
 /* ------------------------------------------------------------ 预设与转场 */
 
-/** 整组双轨的横向位移：让整组中心落到该状态对应的位置。 */
-function presetShift(preset) {
-  const layout = state.layout;
-  if (!layout) return 0;
-  const { vw, u, groupW, padLeft } = layout;
-  const half = groupW * 0.54; // 焦点处卡片被放大，整组视觉半宽略大于几何半宽
-  let center;
-  if (preset.anchor === 'out-left') {
-    center = 0;
-  } else if (preset.anchor === 'left') {
-    center = Math.max(8 * u, vw * 0.012) + half;
-  } else {
-    center = vw - Math.max(24 * u, vw * 0.035) - half;
-  }
-  return center - (padLeft + groupW / 2);
-}
-
-function presetValues(preset) {
-  return { curve: preset.curve, tilt: preset.tilt, shift: presetShift(preset) };
+/**
+ * peak（dp）→ 整组横向偏移（px）。原生 peak 以 dp 为单位，两条轨道同时偏移；
+ * 视口太窄（手机竖屏）时夹紧，保证整组不会完全移出屏幕。
+ */
+function peakPx(peak) {
+  const L = state.layout;
+  const min = -(L.padLeft + L.groupW * 0.85);
+  const max = Math.max(min + 1, L.vw - L.padLeft - L.groupW * 0.85 - L.vw * 0.02);
+  return clamp(peak * L.u, min, max);
 }
 
 function setPreset(next) {
   next = clamp(next, 0, PRESETS.length - 1);
   if (next === state.presetIndex || !state.layout) return;
-  const to = presetValues(PRESETS[next]);
-  state.anim = {
-    from: { curve: state.curve, tilt: state.tilt, shift: state.shift },
-    to,
-    start: performance.now(),
-    duration: 760,
-  };
-  state.tiltLocked = false;
   state.presetIndex = next;
+  state.tiltLocked = false;
   hapticReverse();
 
-  // 波纹从目标位置的焦点荡开
+  // 波纹从目标位置的整组中心荡开
   const { padLeft, groupW, focusY } = state.layout;
-  scene.startRipple(padLeft + groupW / 2 + to.shift, focusY, PRESETS[next].curve);
+  scene.startRipple(padLeft + groupW / 2 + peakPx(PRESETS[next].peak), focusY, PRESETS[next].curve);
   updateStatus();
+}
+
+/** 原生 spring(dampingRatio = 0.82, stiffness = StiffnessLow = 200)。 */
+const SPRING_K = 200;
+const SPRING_C = 2 * 0.82 * Math.sqrt(SPRING_K);
+function springStep(x, v, target, dt) {
+  let t = dt;
+  while (t > 0) {
+    const h = Math.min(t, 0.004);
+    v += (-SPRING_K * (x - target) - SPRING_C * v) * h;
+    x += v * h;
+    t -= h;
+  }
+  return [x, v];
 }
 
 function updateStatus() {
@@ -293,7 +292,7 @@ attachGestures(stage, {
     }
   },
   onTap: (index, side) => {
-    // 青瓷轨（右）不响应翻面
+    // 青瓷轨（左）不响应翻面
     if (side === 0) return;
     const flipped = scene.toggleFlip(index);
     hapticTick(0.65);
@@ -354,21 +353,20 @@ stage.addEventListener(
 
 /* ------------------------------------------------------------------ 主循环 */
 
-/** 当前状态 → 场景视图。白色前轨取全量倾角，青瓷后轨取 -0.42 倍。 */
+/** 当前状态 → 场景视图。倾斜按原生公式作用在整组上。 */
 function buildView() {
-  const frontDeg = state.tilt * TILT_TO_DEG + state.sensorTilt * 5;
-  const backDeg = -state.tilt * TILT_TO_DEG * 0.42 + state.sensorTilt * 5;
+  const shift = state.layout ? peakPx(state.peak) : 0;
   return {
     layout: state.layout,
     backOrder: state.backOrder,
     frontOrder: state.frontOrder,
     backOffset: state.backOffset,
     frontOffset: state.frontOffset,
-    backShift: state.shift,
-    frontShift: state.shift,
+    backShift: shift,
+    frontShift: shift,
     curve: state.curve,
-    backTilt: backDeg,
-    frontTilt: frontDeg,
+    tiltDeg: state.tilt * TILT_ROT,
+    tiltOriginX: clamp(0.5 - state.tilt * TILT_ORIGIN, 0, 1),
     backSpeed: state.backVelocity / 55,
     frontSpeed: state.frontVelocity / 55,
     backPointerY: state.backPointerY,
@@ -384,15 +382,13 @@ function frame(now) {
   state.lastFrame = now;
   const fs = dt / 16.667;
 
-  // 状态切换：位置 / 曲率 / 倾角一起走弹簧过冲
-  if (state.anim) {
-    const { from, to } = state.anim;
-    const t = clamp((now - state.anim.start) / state.anim.duration, 0, 1);
-    const e = 1 - Math.exp(-7 * t) * Math.cos(10 * t);
-    state.curve = from.curve + (to.curve - from.curve) * e;
-    state.shift = from.shift + (to.shift - from.shift) * e;
-    if (!state.tiltLocked) state.tilt = from.tilt + (to.tilt - from.tilt) * e;
-    if (t >= 1) state.anim = null;
+  // 状态切换：peak / curve / tilt 各走一条弹簧追预设目标
+  const target = PRESETS[state.presetIndex];
+  const sec = dt / 1000;
+  [state.peak, state.peakV] = springStep(state.peak, state.peakV, target.peak, sec);
+  [state.curve, state.curveV] = springStep(state.curve, state.curveV, target.curve, sec);
+  if (!state.tiltLocked) {
+    [state.tilt, state.tiltV] = springStep(state.tilt, state.tiltV, target.tilt, sec);
   }
 
   // 搜索定位
@@ -462,14 +458,11 @@ function frame(now) {
 
 function resize() {
   measure();
-  // 视口变了：静止状态下重新贴到对应位置
-  if (!state.anim) state.shift = presetShift(PRESETS[state.presetIndex]);
   scene.apply(buildView());
 }
 
-watchTilt((tilt) => {
-  state.sensorTilt = tilt;
-});
+// 原生里重力传感器只调高光强度，网页端没有对应的高光层，这里不使用
+watchTilt(() => {});
 
 window.addEventListener('resize', resize);
 document.addEventListener('visibilitychange', () => {
@@ -485,10 +478,6 @@ document.addEventListener('visibilitychange', () => {
 window.__three = { state, scene, setPreset };
 
 measure();
-const initial = presetValues(PRESETS[INITIAL_PRESET]);
-state.curve = initial.curve;
-state.tilt = initial.tilt;
-state.shift = initial.shift;
 updateStatus();
 syncTiltUi();
 scene.apply(buildView());

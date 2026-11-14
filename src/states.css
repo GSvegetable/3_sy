@@ -116,3 +116,83 @@
   border-radius: 2px;
   background: #cfeaf6;
 }
+
+/* ============================================================
+   按原生源码对齐的结构与材质
+   ============================================================ */
+
+/* 透视改由整组倾斜层自带（对应原生 graphicsLayer.cameraDistance） */
+.stage { perspective: none; }
+
+.tilt-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 左轨（青瓷）压在右轨（白卡）之上，与原生绘制顺序一致 */
+.rail-back  { z-index: 3; }
+.rail-front { z-index: 2; }
+
+/* —— 白卡（右轨）：纯白纵向渐变，标题近黑衬线，副标无衬线非斜体 —— */
+.face.front {
+  background: linear-gradient(180deg, #ffffff 0%, #f0f5f4 100%);
+  box-shadow: 0 22px 44px -18px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.face.back {
+  background: linear-gradient(180deg, #f2f6f5 0%, #e3ebea 100%);
+}
+.face.front .cast {
+  height: 40%;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.30) 0%, rgba(0, 0, 0, 0.14) 33%, rgba(0, 0, 0, 0.04) 66%, transparent 100%);
+}
+.face.front .eyebrow { left: 12%; top: 12.1%; font-size: calc(var(--card-w, 150px) * 0.06); color: rgba(0, 0, 0, 0.42); }
+.face.front .copy    { left: 12%; right: 8%; bottom: 12.1%; }
+.face.front .copy h2 { color: #0a0a0a; letter-spacing: -0.03em; }
+.face.front .copy p {
+  font-family: "Noto Sans SC", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: calc(var(--card-w, 150px) * 0.06);
+  letter-spacing: 0.08em;
+  color: rgba(0, 0, 0, 0.52);
+}
+
+/* —— 青瓷磨砂玻璃（左轨）：圆角 18dp、横向半透明渐变、文字整体沉在卡片底部 —— */
+.face.porcelain {
+  border-radius: calc(var(--card-radius, 12px) * 1.5);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 40%, transparent 70%),
+    linear-gradient(90deg, rgba(214, 229, 227, 0.55) 0%, rgba(234, 242, 240, 0.70) 50%, rgba(247, 250, 249, 0.82) 100%),
+    rgba(16, 38, 42, 0.28);
+  box-shadow:
+    0 18px 36px -16px rgba(110, 159, 163, 0.55),
+    0 4px 14px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 0.8px rgba(110, 159, 163, 0.5);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+.face.porcelain .cast { display: none; }
+.face.porcelain .eyebrow {
+  left: 10.7%;
+  top: auto;
+  bottom: calc(var(--card-h, 132px) * 0.405);
+  font-size: calc(var(--card-w, 150px) * 0.053);
+  letter-spacing: 0.22em;
+  color: rgba(110, 159, 163, 0.9);
+}
+.face.porcelain .copy { left: 10.7%; right: 8%; bottom: 9.1%; }
+.face.porcelain .copy h2 {
+  font-size: calc(var(--card-w, 150px) * 0.147);
+  letter-spacing: -0.03em;
+  color: #1f3a3d;
+}
+.face.porcelain .copy p {
+  font-family: "Noto Sans SC", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: calc(var(--card-w, 150px) * 0.06);
+  letter-spacing: 0.04em;
+  color: rgba(110, 159, 163, 0.95);
+}
