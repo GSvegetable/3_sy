@@ -1,13 +1,16 @@
 /**
  * 3_sy — 双轨卡片空间（Web / Capacitor 版）
  *
- * 与 Android 版 `BlackWorkspaceScreen` 同一套数据、几何与交互：
- *   · 后轨（左）青瓷卡面、有限滚动 + 越界回弹；
- *   · 前轨（右）白色卡面、循环滚动、点击翻面；
- *   · 横滑切换三组轨道预设，过渡时有一道波纹扫过。
+ * 按参考视频实现：
+ *   · 前轨（左）白色卡面、后轨（右）青瓷卡面，两条轨道都循环滚动；
+ *   · 前轨点击翻面，青瓷轨不翻面；
+ *   · 三个状态（底部三个小点）：整组推到左侧之外 / 贴左 / 贴右，
+ *     横滑或点小点切换，位置、曲率、倾角一起走弹簧过冲，同时有一道波纹扫过；
+ *   · 底部「倾斜」滑条显示并可手动覆盖当前倾角读数。
  */
 import './style.css';
-import { CARD_CONTENTS, PRESETS } from './data.js';
+import './states.css';
+import { CARD_CONTENTS, PRESETS, INITIAL_PRESET, TILT_TO_DEG } from './data.js';
 import { findBestMatch } from './search.js';
 import { createLayout, clamp } from './layout.js';
 import { Scene } from './scene.js';
@@ -20,22 +23,22 @@ const searchToggle = document.querySelector('#searchToggle');
 const searchInput = document.querySelector('#searchInput');
 const statusLabel = document.querySelector('#statusLabel');
 
+/** 后轨（右）= 奇数序号卡片，前轨（左）= 偶数序号卡片。 */
 const state = {
   layout: null,
-  presetIndex: 0,
-  curve: PRESETS[0].curve,
-  tiltBack: PRESETS[0].tilt,
-  tiltFront: -PRESETS[0].tilt * 0.42,
-  shift: PRESETS[0].shift,
-  backOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 0),
-  frontOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 1),
+  presetIndex: INITIAL_PRESET,
+  curve: PRESETS[INITIAL_PRESET].curve,
+  tilt: PRESETS[INITIAL_PRESET].tilt, // 「倾斜」读数（原生单位）
+  tiltLocked: false, // 用户拖过滑条后，转场不再覆盖倾角，直到下一次切换状态
+  shift: 0,
+  backOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 1),
+  frontOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 0),
   backOffset: 0,
   frontOffset: 0,
   backTarget: 0,
   frontTarget: 0,
   backVelocity: 0,
   frontVelocity: 0,
-  backSpring: 0,
   backDeltaLow: 0,
   frontDeltaLow: 0,
   prevBack: 0,
@@ -56,34 +59,66 @@ const state = {
   raf: 0,
 };
 
-/* ------------------------------------------------------------------ 度量 */
+/* ------------------------------------------------------- 状态点与倾斜滑条 */
 
-/** 左轨越界时按 sqrt 压缩溢出量（原生同款处理，避免硬性截断）。 */
-function backRenderedOffset() {
-  const layout = state.layout;
-  if (!layout) return 0;
-  const raw = state.backOffset;
-  const over = raw < layout.backMin ? layout.backMin - raw : raw > layout.backMax ? raw - layout.backMax : 0;
-  if (!over) return raw;
-  const compressed = Math.min(Math.sqrt(over * 6), 120 * layout.u);
-  return raw < layout.backMin ? layout.backMin - compressed : layout.backMax + compressed;
+const dots = document.createElement('div');
+dots.className = 'state-dots';
+const dotEls = PRESETS.map((preset, i) => {
+  const dot = document.createElement('button');
+  dot.type = 'button';
+  dot.className = 'state-dot';
+  dot.setAttribute('aria-label', `状态 ${i + 1} · ${preset.label}`);
+  dot.addEventListener('click', () => setPreset(i));
+  dots.appendChild(dot);
+  return dot;
+});
+
+const tiltBar = document.createElement('div');
+tiltBar.className = 'tilt-bar';
+tiltBar.innerHTML = `
+  <span class="tilt-label">倾斜</span>
+  <input class="tilt-range" type="range" min="-100" max="100" step="1" value="0" aria-label="倾斜">
+  <span class="tilt-value">0</span>`;
+const tiltRange = tiltBar.querySelector('.tilt-range');
+const tiltValue = tiltBar.querySelector('.tilt-value');
+
+// 小点和滑条里的操作不能被舞台当成轨道拖拽 / 横滑切换
+for (const el of [dots, tiltBar]) {
+  el.addEventListener('pointerdown', (event) => event.stopPropagation());
+  stage.appendChild(el);
 }
+
+tiltRange.addEventListener('input', () => {
+  state.tilt = Number(tiltRange.value);
+  state.tiltLocked = true;
+});
+
+let shownTilt = NaN;
+function syncTiltUi() {
+  const value = Math.round(state.tilt);
+  if (value === shownTilt) return;
+  shownTilt = value;
+  tiltValue.textContent = String(value);
+  tiltRange.value = String(clamp(value, -100, 100));
+  tiltRange.style.setProperty('--pct', `${(clamp(value, -100, 100) + 100) / 2}%`);
+}
+
+/* ------------------------------------------------------------------ 度量 */
 
 function measure() {
   const vw = stage.clientWidth;
   const vh = stage.clientHeight;
   const layout = createLayout(vw, vh);
-  const frontHeight = Math.max(1, state.frontOrder.length * layout.step);
-  layout.copies = Math.ceil(vh / frontHeight) + 1;
-  layout.backMin = -layout.focusY + layout.cardH / 2;
-  layout.backMax =
-    (state.backOrder.length - 1) * layout.step - layout.focusY + layout.cardH / 2;
-  layout.frontHeight = frontHeight;
+  layout.frontHeight = Math.max(1, state.frontOrder.length * layout.step);
+  layout.backHeight = Math.max(1, state.backOrder.length * layout.step);
   state.layout = layout;
 
   if (!state.initialized) {
-    state.backOffset = state.backTarget = layout.backMin;
-    state.frontOffset = state.frontTarget = layout.backMin;
+    // 两条轨道都从第一张卡片落在焦点上开始
+    const start = -layout.focusY + layout.cardH / 2;
+    state.backOffset = state.backTarget = start;
+    state.frontOffset = state.frontTarget = start;
+    state.prevBack = state.prevFront = start;
     state.initialized = true;
   }
   scene.setLayout(layout);
@@ -92,14 +127,25 @@ function measure() {
 
 /* ------------------------------------------------------------ 预设与转场 */
 
+/** 整组双轨的横向位移：让整组中心落到该状态对应的位置。 */
+function presetShift(preset) {
+  const layout = state.layout;
+  if (!layout) return 0;
+  const { vw, u, groupW, padLeft } = layout;
+  const half = groupW * 0.54; // 焦点处卡片被放大，整组视觉半宽略大于几何半宽
+  let center;
+  if (preset.anchor === 'out-left') {
+    center = 0;
+  } else if (preset.anchor === 'left') {
+    center = Math.max(8 * u, vw * 0.012) + half;
+  } else {
+    center = vw - Math.max(24 * u, vw * 0.035) - half;
+  }
+  return center - (padLeft + groupW / 2);
+}
+
 function presetValues(preset) {
-  const u = state.layout ? state.layout.u : 1;
-  return {
-    curve: preset.curve,
-    tiltBack: preset.tilt,
-    tiltFront: -preset.tilt * 0.42,
-    shift: preset.shift * u,
-  };
+  return { curve: preset.curve, tilt: preset.tilt, shift: presetShift(preset) };
 }
 
 function setPreset(next) {
@@ -107,30 +153,27 @@ function setPreset(next) {
   if (next === state.presetIndex || !state.layout) return;
   const to = presetValues(PRESETS[next]);
   state.anim = {
-    from: {
-      curve: state.curve,
-      tiltBack: state.tiltBack,
-      tiltFront: state.tiltFront,
-      shift: state.shift,
-    },
+    from: { curve: state.curve, tilt: state.tilt, shift: state.shift },
     to,
     start: performance.now(),
     duration: 760,
   };
+  state.tiltLocked = false;
   state.presetIndex = next;
   hapticReverse();
 
-  // 波纹从焦点位置荡开
-  const { padLeft, cardW, gap, focusY } = state.layout;
-  const frontLeft = padLeft + cardW + gap;
-  scene.startRipple(frontLeft + cardW / 2, focusY, PRESETS[next].curve);
+  // 波纹从目标位置的焦点荡开
+  const { padLeft, groupW, focusY } = state.layout;
+  scene.startRipple(padLeft + groupW / 2 + to.shift, focusY, PRESETS[next].curve);
   updateStatus();
 }
 
 function updateStatus() {
-  if (!statusLabel) return;
   const preset = PRESETS[state.presetIndex];
-  statusLabel.textContent = `${String(state.presetIndex + 1).padStart(2, '0')} · ${preset.label}`;
+  if (statusLabel) {
+    statusLabel.textContent = `${String(state.presetIndex + 1).padStart(2, '0')} · ${preset.label}`;
+  }
+  dotEls.forEach((dot, i) => dot.classList.toggle('active', i === state.presetIndex));
 }
 
 /* ------------------------------------------------------------------ 搜索 */
@@ -154,13 +197,15 @@ function runSearch(raw) {
   const { step, focusY, cardH } = state.layout;
   const target = row * step - focusY + cardH / 2;
 
-  if (onBack) {
-    const bounded = clamp(target, state.layout.backMin, state.layout.backMax);
-    state.searchMotion = { side: 0, start: state.backOffset, target: bounded, started: performance.now() };
-  } else {
-    const congruent = nearestCongruent(state.frontOffset, target, state.layout.frontHeight);
-    state.searchMotion = { side: 1, start: state.frontOffset, target: congruent, started: performance.now() };
-  }
+  // 两条轨道都是循环的：取与当前位置最近的那一圈
+  const period = onBack ? state.layout.backHeight : state.layout.frontHeight;
+  const current = onBack ? state.backOffset : state.frontOffset;
+  state.searchMotion = {
+    side: onBack ? 0 : 1,
+    start: current,
+    target: nearestCongruent(current, target, period),
+    started: performance.now(),
+  };
   state.highlightIndex = index;
   state.highlightUntil = performance.now() + 1600;
 }
@@ -248,7 +293,7 @@ attachGestures(stage, {
     }
   },
   onTap: (index, side) => {
-    // 原生：青瓷轨（左）不响应翻面
+    // 青瓷轨（右）不响应翻面
     if (side === 0) return;
     const flipped = scene.toggleFlip(index);
     hapticTick(0.65);
@@ -309,20 +354,44 @@ stage.addEventListener(
 
 /* ------------------------------------------------------------------ 主循环 */
 
+/** 当前状态 → 场景视图。白色前轨取全量倾角，青瓷后轨取 -0.42 倍。 */
+function buildView() {
+  const frontDeg = state.tilt * TILT_TO_DEG + state.sensorTilt * 5;
+  const backDeg = -state.tilt * TILT_TO_DEG * 0.42 + state.sensorTilt * 5;
+  return {
+    layout: state.layout,
+    backOrder: state.backOrder,
+    frontOrder: state.frontOrder,
+    backOffset: state.backOffset,
+    frontOffset: state.frontOffset,
+    backShift: state.shift,
+    frontShift: state.shift,
+    curve: state.curve,
+    backTilt: backDeg,
+    frontTilt: frontDeg,
+    backSpeed: state.backVelocity / 55,
+    frontSpeed: state.frontVelocity / 55,
+    backPointerY: state.backPointerY,
+    frontPointerY: state.frontPointerY,
+    pressedKey: state.pressedKey,
+    highlightIndex: state.highlightIndex,
+    highlightUntil: state.highlightUntil,
+  };
+}
+
 function frame(now) {
   const dt = state.lastFrame ? Math.min(40, now - state.lastFrame) : 16.667;
   state.lastFrame = now;
   const fs = dt / 16.667;
 
-  // 预设插值
+  // 状态切换：位置 / 曲率 / 倾角一起走弹簧过冲
   if (state.anim) {
+    const { from, to } = state.anim;
     const t = clamp((now - state.anim.start) / state.anim.duration, 0, 1);
     const e = 1 - Math.exp(-7 * t) * Math.cos(10 * t);
-    state.curve = state.anim.from.curve + (state.anim.to.curve - state.anim.from.curve) * e;
-    state.tiltBack = state.anim.from.tiltBack + (state.anim.to.tiltBack - state.anim.from.tiltBack) * e;
-    state.tiltFront =
-      state.anim.from.tiltFront + (state.anim.to.tiltFront - state.anim.from.tiltFront) * e;
-    state.shift = state.anim.from.shift + (state.anim.to.shift - state.anim.from.shift) * e;
+    state.curve = from.curve + (to.curve - from.curve) * e;
+    state.shift = from.shift + (to.shift - from.shift) * e;
+    if (!state.tiltLocked) state.tilt = from.tilt + (to.tilt - from.tilt) * e;
     if (t >= 1) state.anim = null;
   }
 
@@ -382,43 +451,9 @@ function frame(now) {
     state.lastStepFront = frontStep;
   }
 
-  // 左轨越界回弹
-  if (state.layout) {
-    const bound = clamp(state.backOffset, state.layout.backMin, state.layout.backMax);
-    const overflow = bound - state.backOffset;
-    if (state.dragging !== 0 && Math.abs(overflow) > 0.5) {
-      state.backSpring = (state.backSpring + overflow * 0.12 * fs) * Math.pow(0.72, fs);
-      state.backOffset += state.backSpring * fs;
-      state.backVelocity = 0;
-      if (Math.abs(overflow) < 0.35 && Math.abs(state.backSpring) < 0.35) {
-        state.backOffset = bound;
-        state.backSpring = 0;
-      }
-    } else if (state.dragging === 0) {
-      state.backSpring = 0;
-    }
-  }
-
   scene.stepFlips(fs);
-  scene.apply({
-    layout: state.layout,
-    backOrder: state.backOrder,
-    frontOrder: state.frontOrder,
-    backOffset: backRenderedOffset(),
-    frontOffset: state.frontOffset,
-    backShift: state.shift,
-    frontShift: state.shift,
-    curve: state.curve,
-    backTilt: state.tiltBack + state.sensorTilt * 5,
-    frontTilt: state.tiltFront + state.sensorTilt * 5,
-    backSpeed: state.backVelocity / 55,
-    frontSpeed: state.frontVelocity / 55,
-    backPointerY: state.backPointerY,
-    frontPointerY: state.frontPointerY,
-    pressedKey: state.pressedKey,
-    highlightIndex: state.highlightIndex,
-    highlightUntil: state.highlightUntil,
-  });
+  scene.apply(buildView());
+  syncTiltUi();
 
   state.raf = requestAnimationFrame(frame);
 }
@@ -427,29 +462,9 @@ function frame(now) {
 
 function resize() {
   measure();
-  scene.apply(currentView());
-}
-
-function currentView() {
-  return {
-    layout: state.layout,
-    backOrder: state.backOrder,
-    frontOrder: state.frontOrder,
-    backOffset: backRenderedOffset(),
-    frontOffset: state.frontOffset,
-    backShift: state.shift,
-    frontShift: state.shift,
-    curve: state.curve,
-    backTilt: state.tiltBack,
-    frontTilt: state.tiltFront,
-    backSpeed: state.backVelocity / 55,
-    frontSpeed: state.frontVelocity / 55,
-    backPointerY: state.backPointerY,
-    frontPointerY: state.frontPointerY,
-    pressedKey: state.pressedKey,
-    highlightIndex: state.highlightIndex,
-    highlightUntil: state.highlightUntil,
-  };
+  // 视口变了：静止状态下重新贴到对应位置
+  if (!state.anim) state.shift = presetShift(PRESETS[state.presetIndex]);
+  scene.apply(buildView());
 }
 
 watchTilt((tilt) => {
@@ -467,14 +482,14 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // 调试入口：便于在浏览器控制台检查运行时状态
-window.__three = { state, scene };
+window.__three = { state, scene, setPreset };
 
 measure();
-const initial = presetValues(PRESETS[0]);
+const initial = presetValues(PRESETS[INITIAL_PRESET]);
 state.curve = initial.curve;
-state.tiltBack = initial.tiltBack;
-state.tiltFront = initial.tiltFront;
+state.tilt = initial.tilt;
 state.shift = initial.shift;
 updateStatus();
-scene.apply(currentView());
+syncTiltUi();
+scene.apply(buildView());
 state.raf = requestAnimationFrame(frame);
