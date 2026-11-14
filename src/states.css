@@ -1,67 +1,90 @@
 /* 横向状态切换；左侧大轨位于上层。 */
-.stage{perspective:none}.tilt-layer{position:absolute;inset:0;z-index:1;pointer-events:none}
-.rail-back{z-index:3}.rail-front{z-index:2}
+.stage{perspective:none}
+.tilt-layer{position:absolute;inset:0;z-index:1;pointer-events:none}
+.rail-back{z-index:3}
+.rail-front{z-index:2}
+
 .face.front{background:linear-gradient(180deg,#fff 0%,#f0f5f4 100%);box-shadow:0 22px 44px -18px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.3)}
 .face.back{background:linear-gradient(180deg,#f2f6f5 0%,#e3ebea 100%)}
 .face.front .cast{height:40%;background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.14) 33%,rgba(0,0,0,.04) 66%,transparent)}
 .face.front .eyebrow{left:12%;top:12.1%;font-size:calc(var(--card-w,150px)*.06);color:rgba(0,0,0,.42)}
-.face.front .copy{left:12%;right:8%;bottom:12.1%}.face.front .copy h2{color:#0a0a0a;letter-spacing:-.03em}
+.face.front .copy{left:12%;right:8%;bottom:12.1%}
+.face.front .copy h2{color:#0a0a0a;letter-spacing:-.03em}
 .face.front .copy p{font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-style:normal;font-weight:500;font-size:calc(var(--card-w,150px)*.06);letter-spacing:.08em;color:rgba(0,0,0,.52)}
-/* 左轨：无色透明玻璃。避免厚白描边，以透光层次、边缘折射感和局部反射建立材质。 */
+
+/* 左轨：轻量原生玻璃。透明透射由浏览器直接合成，不再生成背景快照或逐帧绘制网格。 */
 .face.porcelain,.face.porcelain-back{
- position:absolute;isolation:isolate;overflow:hidden;
+ position:absolute;
+ overflow:hidden;
  border:0;
  border-radius:calc(var(--card-radius,12px)*1.5);
- background:rgba(255,255,255,.008);
+ background:rgba(218,234,236,.045);
+ -webkit-backdrop-filter:blur(1.15px) saturate(1.28) contrast(1.045);
+ backdrop-filter:blur(1.15px) saturate(1.28) contrast(1.045);
  box-shadow:
    0 18px 42px -25px rgba(0,0,0,.78),
-   inset 0 0 0 .5px rgba(255,255,255,.10),
-   inset 0 1px 2px rgba(255,255,255,.18),
-   inset 0 -8px 18px rgba(0,0,0,.10);
+   inset 0 0 0 .5px rgba(255,255,255,.09),
+   inset 0 1px 2px rgba(255,255,255,.17),
+   inset 0 -9px 20px rgba(0,0,0,.12);
 }
 .face.porcelain-back{
- background:rgba(255,255,255,.008);
+ background:rgba(218,234,236,.055);
 }
 .face.porcelain::before,.face.porcelain-back::before{
- content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:1;
- /* 不画完整白框：只在光线方向形成不连续的柔和反射 */
+ content:"";
+ position:absolute;
+ inset:0;
+ border-radius:inherit;
+ pointer-events:none;
+ z-index:1;
  background:
-  radial-gradient(115% 52% at 8% 0%,rgba(255,255,255,.22),transparent 62%),
-  radial-gradient(90% 70% at 100% 100%,rgba(255,255,255,.075),transparent 72%),
-  linear-gradient(116deg,transparent 0%,rgba(255,255,255,.11) 18%,rgba(255,255,255,.018) 25%,transparent 37%),
-  linear-gradient(180deg,rgba(255,255,255,.12),transparent 13%,transparent 82%,rgba(0,0,0,.10));
+  radial-gradient(115% 52% at 8% 0%,rgba(255,255,255,.24),transparent 62%),
+  radial-gradient(90% 70% at 100% 100%,rgba(205,231,236,.09),transparent 72%),
+  linear-gradient(116deg,transparent 0%,rgba(255,255,255,.13) 18%,rgba(255,255,255,.02) 25%,transparent 37%),
+  linear-gradient(180deg,rgba(255,255,255,.14),transparent 13%,transparent 82%,rgba(0,0,0,.12));
 }
 .face.porcelain::after,.face.porcelain-back::after{
- content:"";position:absolute;inset:1px;border-radius:inherit;pointer-events:none;z-index:3;
- /* 局部边缘高光，不使用整圈描边 */
+ content:"";
+ position:absolute;
+ inset:1px;
+ border-radius:inherit;
+ pointer-events:none;
+ z-index:3;
  background:
-  linear-gradient(180deg,rgba(255,255,255,.26),transparent 10%) top/100% 28% no-repeat,
-  linear-gradient(90deg,rgba(255,255,255,.12),transparent 8%) left/14% 100% no-repeat;
- opacity:.52;
+  linear-gradient(180deg,rgba(255,255,255,.28),transparent 9%) top/100% 28% no-repeat,
+  linear-gradient(90deg,rgba(255,255,255,.15),transparent 8%) left/14% 100% no-repeat,
+  linear-gradient(0deg,rgba(255,255,255,.10),transparent 16%) bottom/72% 20% no-repeat;
+ opacity:.56;
 }
 .face.porcelain>.cast,.face.porcelain-back>.cast{display:none}
 .face.porcelain>.eyebrow,.face.porcelain>.copy,.face.porcelain-back>.back-mark{z-index:2}
 .face.porcelain .eyebrow{
- left:10.7%;top:auto;bottom:calc(var(--card-h,132px)*.405);
- font-size:calc(var(--card-w,150px)*.053);letter-spacing:.22em;
- color:rgba(255,255,255,.68);text-shadow:0 1px 5px rgba(0,0,0,.48)
+ left:10.7%;
+ top:auto;
+ bottom:calc(var(--card-h,132px)*.405);
+ font-size:calc(var(--card-w,150px)*.053);
+ letter-spacing:.22em;
+ color:rgba(255,255,255,.76);
+ text-shadow:0 1px 5px rgba(0,0,0,.58);
 }
 .face.porcelain .copy{left:10.7%;right:8%;bottom:9.1%}
 .face.porcelain .copy h2{
- font-size:calc(var(--card-w,150px)*.147);letter-spacing:-.03em;
- color:rgba(255,255,255,.94);text-shadow:0 1px 8px rgba(0,0,0,.46)
+ font-size:calc(var(--card-w,150px)*.147);
+ letter-spacing:-.03em;
+ color:rgba(255,255,255,.97);
+ text-shadow:0 1px 8px rgba(0,0,0,.58);
 }
 .face.porcelain .copy p{
  font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
- font-style:normal;font-weight:500;font-size:calc(var(--card-w,150px)*.06);
- letter-spacing:.04em;color:rgba(255,255,255,.72);text-shadow:0 1px 6px rgba(0,0,0,.46)
+ font-style:normal;
+ font-weight:500;
+ font-size:calc(var(--card-w,150px)*.06);
+ letter-spacing:.04em;
+ color:rgba(255,255,255,.82);
+ text-shadow:0 1px 6px rgba(0,0,0,.55);
 }
 .face.porcelain-back .back-mark{color:rgba(255,255,255,.78);text-shadow:0 1px 8px rgba(255,255,255,.18)}
-.card.is-reflowing{transition:transform 390ms cubic-bezier(.22,1,.36,1),opacity 260ms ease}
 
-/* Canvas optical layer: it bends a live raster of the content behind the glass. */
-.face.porcelain,.face.porcelain-back{background:rgba(255,255,255,.008);-webkit-backdrop-filter:none;backdrop-filter:none}
-.face .glass-refraction{position:absolute;inset:0;width:100%;height:100%;z-index:0;display:block;pointer-events:none}
-.face.porcelain::before,.face.porcelain-back::before{z-index:1;opacity:.52}
-.face.porcelain::after,.face.porcelain-back::after{z-index:3}
-.face.porcelain>.eyebrow,.face.porcelain>.copy,.face.porcelain-back>.back-mark{z-index:2;position:absolute}
+/* 几何末端淡出放在卡面本身，避免祖先 opacity 截断玻璃的背板采样。 */
+.card .face{opacity:var(--card-alpha,1)}
+.card.is-reflowing{transition:transform 390ms cubic-bezier(.22,1,.36,1)}
