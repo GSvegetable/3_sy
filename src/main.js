@@ -6,7 +6,6 @@
  *   · 三个状态（底部三个小点）的 peak / curve / tilt 与原生预设一致，
  *     横滑或点小点切换，三个量各走一条弹簧（阻尼 0.82、刚度 200，与原生一致），同时有一道波纹扫过；
  *   · 倾斜作用在整组上：rotateY = 读数 × 0.48°，旋转原点随读数左右移动；
- *   · 底部「倾斜」滑条显示并可手动覆盖当前倾角读数。
  */
 import './style.css';
 import './states.css';
@@ -34,7 +33,6 @@ const state = {
   curveV: 0,
   tilt: PRESETS[INITIAL_PRESET].tilt,
   tiltV: 0,
-  tiltLocked: false, // 用户拖过滑条后，倾角弹簧不再追预设，直到下一次切换状态
   backOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 0),
   frontOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 1),
   backOffset: 0,
@@ -61,49 +59,7 @@ const state = {
   raf: 0,
 };
 
-/* ------------------------------------------------------- 状态点与倾斜滑条 */
-
-const dots = document.createElement('div');
-dots.className = 'state-dots';
-const dotEls = PRESETS.map((preset, i) => {
-  const dot = document.createElement('button');
-  dot.type = 'button';
-  dot.className = 'state-dot';
-  dot.setAttribute('aria-label', `状态 ${i + 1} · ${preset.label}`);
-  dot.addEventListener('click', () => setPreset(i));
-  dots.appendChild(dot);
-  return dot;
-});
-
-const tiltBar = document.createElement('div');
-tiltBar.className = 'tilt-bar';
-tiltBar.innerHTML = `
-  <span class="tilt-label">倾斜</span>
-  <input class="tilt-range" type="range" min="-100" max="100" step="1" value="0" aria-label="倾斜">
-  <span class="tilt-value">0</span>`;
-const tiltRange = tiltBar.querySelector('.tilt-range');
-const tiltValue = tiltBar.querySelector('.tilt-value');
-
-// 小点和滑条里的操作不能被舞台当成轨道拖拽 / 横滑切换
-for (const el of [dots, tiltBar]) {
-  el.addEventListener('pointerdown', (event) => event.stopPropagation());
-  stage.appendChild(el);
-}
-
-tiltRange.addEventListener('input', () => {
-  state.tilt = Number(tiltRange.value);
-  state.tiltLocked = true;
-});
-
-let shownTilt = NaN;
-function syncTiltUi() {
-  const value = Math.round(state.tilt);
-  if (value === shownTilt) return;
-  shownTilt = value;
-  tiltValue.textContent = String(value);
-  tiltRange.value = String(clamp(value, -100, 100));
-  tiltRange.style.setProperty('--pct', `${(clamp(value, -100, 100) + 100) / 2}%`);
-}
+/* ------------------------------------------------------- 状态切换：仅通过横向甩动 */
 
 /* ------------------------------------------------------------------ 度量 */
 
@@ -144,7 +100,11 @@ function setPreset(next) {
   next = clamp(next, 0, PRESETS.length - 1);
   if (next === state.presetIndex || !state.layout) return;
   state.presetIndex = next;
-  state.tiltLocked = false;
+  // 给弹簧一个顺势初速度，让整组不是“瞬移”，而是带惯性地甩向新位置。
+  const direction = Math.sign(PRESETS[next].peak - state.peak) || Math.sign(next - state.presetIndex);
+  state.peakV = direction * Math.min(520, 220 + Math.abs(PRESETS[next].peak - state.peak) * 0.12);
+  state.curveV = Math.sign(PRESETS[next].curve - state.curve) * 18;
+  state.tiltV = Math.sign(PRESETS[next].tilt - state.tilt) * 95;
   hapticReverse();
 
   // 波纹从目标位置的整组中心荡开
@@ -172,7 +132,6 @@ function updateStatus() {
   if (statusLabel) {
     statusLabel.textContent = `${String(state.presetIndex + 1).padStart(2, '0')} · ${preset.label}`;
   }
-  dotEls.forEach((dot, i) => dot.classList.toggle('active', i === state.presetIndex));
 }
 
 /* ------------------------------------------------------------------ 搜索 */
@@ -387,9 +346,7 @@ function frame(now) {
   const sec = dt / 1000;
   [state.peak, state.peakV] = springStep(state.peak, state.peakV, target.peak, sec);
   [state.curve, state.curveV] = springStep(state.curve, state.curveV, target.curve, sec);
-  if (!state.tiltLocked) {
-    [state.tilt, state.tiltV] = springStep(state.tilt, state.tiltV, target.tilt, sec);
-  }
+  [state.tilt, state.tiltV] = springStep(state.tilt, state.tiltV, target.tilt, sec);
 
   // 搜索定位
   if (state.searchMotion) {
@@ -449,7 +406,6 @@ function frame(now) {
 
   scene.stepFlips(fs);
   scene.apply(buildView());
-  syncTiltUi();
 
   state.raf = requestAnimationFrame(frame);
 }
@@ -479,6 +435,5 @@ window.__three = { state, scene, setPreset };
 
 measure();
 updateStatus();
-syncTiltUi();
 scene.apply(buildView());
 state.raf = requestAnimationFrame(frame);
