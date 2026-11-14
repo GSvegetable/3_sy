@@ -106,9 +106,7 @@ function setPreset(next) {
   if (next === state.presetIndex || !state.layout) return;
 
   const target = PRESETS[next];
-  const distance = Math.abs(target.peak - state.peak);
-  // 从当前画面接续到目标，不叠加人为初速度，避免突然弹射。
-  const now = performance.now();
+  // 从当前画面与当前速度接续目标，避免切换时重置运动。
   const enteringRight = next === 2 && state.presetIndex !== 2;
   const leavingRight = state.presetIndex === 2 && next !== 2;
   state.transition = { to: target };
@@ -124,8 +122,8 @@ function setPreset(next) {
 }
 
 /**
- * 连续弹簧动力学：保留当前速度，目标改变时不重置运动。
- * 半隐式积分并限制子步长，降低高刷新率/掉帧时的数值抖动。
+ * 柔和阻尼动力学：降低整体加速度，并为透视倾斜留出更长的收束时间。
+ * 半隐式积分并限制子步长，避免高刷新率/掉帧时的数值抖动。
  */
 function springStep(value, velocity, target, deltaSeconds, stiffness = 170, damping = 25) {
   let remaining = Math.max(0, deltaSeconds);
@@ -360,9 +358,9 @@ function frame(now) {
   if (state.transition) {
     const target = state.transition.to;
     const seconds = dt / 1000;
-    let p = springStep(state.peak, state.peakV, target.peak, seconds);
-    let c = springStep(state.curve, state.curveV, target.curve, seconds);
-    let r = springStep(state.tilt, state.tiltV, target.tilt, seconds);
+    let p = springStep(state.peak, state.peakV, target.peak, seconds, 58, 16);
+    let c = springStep(state.curve, state.curveV, target.curve, seconds, 54, 15);
+    let r = springStep(state.tilt, state.tiltV, target.tilt, seconds, 34, 12.5);
     state.peak = p.value; state.peakV = p.velocity;
     state.curve = c.value; state.curveV = c.velocity;
     state.tilt = r.value; state.tiltV = r.velocity;
@@ -382,12 +380,12 @@ function frame(now) {
   // 第三个状态的双轨换位由同一弹簧驱动；弧线方向跟随轨道位置，
   // 纵向甩动直接取换位速度，因此起落与横向运动自然关联。
   if (state.trackMotion) {
-    const motion = springStep(state.trackShift, state.trackShiftV, state.trackMotion.target, dt / 1000, 170, 25);
+    const motion = springStep(state.trackShift, state.trackShiftV, state.trackMotion.target, dt / 1000, 48, 14);
     state.trackShift = motion.value;
     state.trackShiftV = motion.velocity;
     state.arcDirection = 1 - 2 * state.trackShift;
-    const whipLimit = 18 * state.layout.u;
-    state.trackWhipY = clamp(-state.trackShiftV * 1.8 * state.layout.u, -whipLimit, whipLimit);
+    const whipLimit = 12 * state.layout.u;
+    state.trackWhipY = clamp(-state.trackShiftV * 1.25 * state.layout.u, -whipLimit, whipLimit);
 
     if (Math.abs(state.trackMotion.target - state.trackShift) < 0.001 && Math.abs(state.trackShiftV) < 0.006) {
       state.trackShift = state.trackMotion.target;
