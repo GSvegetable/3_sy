@@ -4,7 +4,7 @@
  * 卡片的点击翻面与长按抽出由轨道容器单独处理。
  */
 
-const SWIPE_CARD_RATIO = 1.5; // 横滑切换阈值 = 1.5 倍卡片宽
+const SWIPE_DISTANCE_RATIO = 0.075; // 横滑距离阈值：手机上约 30–40px
 const LONG_PRESS_MS = 400;
 const TAP_MAX_MS = 500;
 
@@ -26,6 +26,7 @@ export function attachGestures(stage, handlers) {
       startX: event.clientX,
       startY: event.clientY,
       lastY: event.clientY,
+      lastX: event.clientX,
       lastTime: performance.now(),
       switched: false,
       dragging: false,
@@ -38,7 +39,8 @@ export function attachGestures(stage, handlers) {
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
 
-    if (!gesture.switched && Math.abs(dx) > cardWidth() * SWIPE_CARD_RATIO && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    const swipeThreshold = Math.max(28, stage.getBoundingClientRect().width * SWIPE_DISTANCE_RATIO);
+    if (!gesture.switched && Math.abs(dx) > swipeThreshold && Math.abs(dx) > Math.abs(dy) * 1.25) {
       gesture.switched = true;
       handlers.onPresetStep(dx > 0 ? 1 : -1);
       event.preventDefault();
