@@ -36,6 +36,11 @@ export function attachGestures(stage, handlers) {
   const onMove = (event) => {
     if (!gesture || gesture.id !== event.pointerId) return;
     if (isBlocked()) return;
+    // 长按已进入抽卡待命后，舞台不再把同一次移动识别成轨道滚动。
+    if (hold && hold.id === event.pointerId && hold.longPressed) {
+      event.preventDefault();
+      return;
+    }
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
 
