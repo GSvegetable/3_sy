@@ -42,19 +42,100 @@
   color: rgba(0, 0, 0, 0.52);
 }
 
-/* —— 青瓷磨砂玻璃（左轨）：圆角 18dp、横向半透明渐变、文字整体沉在卡片底部 —— */
-.face.porcelain {
-  border-radius: calc(var(--card-radius, 12px) * 1.5);
+/* —— 青瓷 Liquid Glass：透光底色、环境雾化、曲面高光与折射边缘 —— */
+.face.porcelain,
+.face.porcelain-back {
+  position: absolute;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(232, 255, 252, 0.52);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 40%, transparent 70%),
-    linear-gradient(90deg, rgba(214, 229, 227, 0.55) 0%, rgba(234, 242, 240, 0.70) 50%, rgba(247, 250, 249, 0.82) 100%),
-    rgba(16, 38, 42, 0.28);
+    radial-gradient(115% 85% at 8% 0%, rgba(255, 255, 255, 0.54) 0%, rgba(232, 255, 252, 0.20) 24%, transparent 58%),
+    linear-gradient(138deg, rgba(201, 239, 235, 0.46) 0%, rgba(104, 164, 164, 0.25) 46%, rgba(26, 72, 78, 0.38) 100%),
+    rgba(114, 170, 169, 0.20);
+  -webkit-backdrop-filter: blur(24px) saturate(1.85) contrast(1.12) brightness(1.10);
+  backdrop-filter: blur(24px) saturate(1.85) contrast(1.12) brightness(1.10);
   box-shadow:
-    0 18px 36px -16px rgba(110, 159, 163, 0.55),
-    0 4px 14px rgba(0, 0, 0, 0.45),
-    inset 0 0 0 0.8px rgba(110, 159, 163, 0.5);
-  backdrop-filter: blur(10px) saturate(1.2);
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+    0 26px 52px -22px rgba(0, 0, 0, 0.62),
+    0 8px 24px rgba(45, 119, 121, 0.18),
+    inset 0 1.4px 0 rgba(255, 255, 255, 0.88),
+    inset 1px 0 0 rgba(255, 255, 255, 0.32),
+    inset -1px 0 0 rgba(37, 91, 94, 0.16),
+    inset 0 -22px 34px -26px rgba(13, 64, 69, 0.72);
+}
+.face.porcelain-back {
+  background:
+    radial-gradient(120% 85% at 92% 0%, rgba(232, 255, 252, 0.36), transparent 54%),
+    linear-gradient(145deg, rgba(113, 177, 175, 0.52), rgba(22, 66, 72, 0.62));
+}
+.face.porcelain::before,
+.face.porcelain::after,
+.face.porcelain-back::before,
+.face.porcelain-back::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.face.porcelain::before,
+.face.porcelain-back::before {
+  z-index: 1;
+  background:
+    radial-gradient(95% 58% at 4% -8%, rgba(255, 255, 255, 0.62), transparent 64%),
+    linear-gradient(116deg,
+      transparent 12%,
+      rgba(255, 255, 255, 0.30) 23%,
+      rgba(255, 255, 255, 0.07) 31%,
+      transparent 43%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 36%, rgba(37, 111, 113, 0.10));
+  mix-blend-mode: screen;
+}
+.face.porcelain::after,
+.face.porcelain-back::after {
+  z-index: 3;
+  border: 1px solid rgba(235, 255, 252, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    inset 1px 0 0 rgba(255, 255, 255, 0.20),
+    inset -1px 0 0 rgba(255, 255, 255, 0.08),
+    inset 0 -1px 0 rgba(104, 171, 169, 0.28),
+    inset 0 0 18px rgba(230, 255, 252, 0.10);
+}
+.face.porcelain > .cast,
+.face.porcelain-back > .cast { display: none; }
+.face.porcelain > .eyebrow,
+.face.porcelain > .copy,
+.face.porcelain-back > .back-mark {
+  z-index: 2;
+}
+.face.porcelain .eyebrow {
+  left: 10.7%;
+  top: auto;
+  bottom: calc(var(--card-h, 132px) * 0.405);
+  font-size: calc(var(--card-w, 150px) * 0.053);
+  letter-spacing: 0.22em;
+  color: rgba(28, 77, 80, 0.82);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.34);
+}
+.face.porcelain .copy { left: 10.7%; right: 8%; bottom: 9.1%; }
+.face.porcelain .copy h2 {
+  font-size: calc(var(--card-w, 150px) * 0.147);
+  letter-spacing: -0.03em;
+  color: #17383b;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.38);
+}
+.face.porcelain .copy p {
+  font-family: "Noto Sans SC", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: calc(var(--card-w, 150px) * 0.06);
+  letter-spacing: 0.04em;
+  color: rgba(35, 100, 102, 0.90);
+}
+.face.porcelain-back .back-mark {
+  color: rgba(236, 255, 251, 0.82);
+  text-shadow: 0 1px 8px rgba(190, 255, 247, 0.28);
 }
 .face.porcelain .cast { display: none; }
 .face.porcelain .eyebrow {
