@@ -9,7 +9,6 @@
  */
 import { CARD_CONTENTS, CAMERA_DP } from './data.js';
 import { cardGeometry, clamp } from './layout.js';
-import { GlassRefraction } from './glass.js';
 
 export class Scene {
   constructor(stage) {
@@ -18,7 +17,6 @@ export class Scene {
     this.railFront = stage.querySelector('#railFront');
     this.flips = new Map();
     this.cards = [];
-    this.glass = new GlassRefraction(stage);
 
     // 整组倾斜层：两条轨道一起旋转，背景幽灵字不参与
     this.layer = document.createElement('div');
@@ -88,7 +86,7 @@ export class Scene {
     // 顺序变化时记录旧卡片的屏幕位置，让空位由相邻卡片平滑补上。
     const previous = new Map(this.cards.map((rec) => [
       `${rec.side}:${rec.copy}:${rec.index}`,
-      { transform: rec.el.style.transform, opacity: rec.el.style.opacity },
+      { transform: rec.el.style.transform },
     ]));
     this.railBack.innerHTML = '';
     this.railFront.innerHTML = '';
@@ -102,7 +100,6 @@ export class Scene {
           const old = previous.get(`${side}:${copy}:${index}`);
           if (old?.transform) {
             rec.el.style.transform = old.transform;
-            rec.el.style.opacity = old.opacity;
             rec.el.classList.add('is-reflowing');
           }
           rail.appendChild(rec.el);
@@ -127,9 +124,6 @@ export class Scene {
     el.dataset.side = side;
     el.dataset.row = String(row);
     el.innerHTML = this.cardMarkup(card, side);
-    if (side === 'back') {
-      el.querySelectorAll('.face.porcelain,.face.porcelain-back').forEach((face) => this.glass.attach(face));
-    }
     return { el, index, side, copy, row, card, flipKey: `${side}:${copy}:${index}` };
   }
 
@@ -218,7 +212,9 @@ export class Scene {
       const row = order.indexOf(rec.index);
       const el = rec.el;
       if (row < 0) {
-        el.style.opacity = '0';
+        el.style.visibility = 'hidden';
+        rec.hidden = true;
+        rec.sx = NaN;
         continue;
       }
 
@@ -239,7 +235,6 @@ export class Scene {
       // 视口外的副本直接跳过（按线性位置裁剪，与原生一致，避免弧线末端甩出屏幕）
       const cull = layout.cardH * 1.5;
       if (baseY > layout.vh + cull || baseY + layout.cardH < -cull) {
-        el.style.opacity = '0';
         el.style.visibility = 'hidden';
         rec.hidden = true;
         rec.sx = NaN;
@@ -268,7 +263,7 @@ export class Scene {
       const scale = g.scale * (1 + elev * 0.12) * (isBack ? 1.06 : 0.96);
 
       el.style.transform = `translate3d(${x}px, ${y + trackY}px, 0) scale(${scale})`;
-      el.style.opacity = String(g.alpha);
+      el.style.setProperty('--card-alpha', String(g.alpha));
       el.style.zIndex = String(Math.round(baseZ(rec, g.smooth) + elev * 100 + highlight * 1000));
 
       const inner = el.firstElementChild;
