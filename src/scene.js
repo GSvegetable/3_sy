@@ -1,11 +1,12 @@
 /**
  * 场景层：负责轨道 DOM 的构建、卡片几何的应用，以及预设切换时的波纹转场。
  *
- * 双轨结构（按参考视频）：
- *   前轨（左）= 白色卡面，偶数序号卡片，循环滚动，点击翻面，压在上层；
- *   后轨（右）= 青瓷卡面，奇数序号卡片，循环滚动，不翻面，被前轨压住一部分。
+ * 双轨结构（对照原生源码与参考视频）：
+ *   后轨（左）= 青瓷磨砂玻璃卡面，偶数序号卡片，不翻面，压在上层；
+ *   前轨（右）= 白色卡面，奇数序号卡片，点击翻面，被左轨压住一部分；
+ *   两条轨道都循环滚动；整组放在一个 tilt-layer 里一起旋转（原生同样是整层 rotationY）。
  */
-import { CARD_CONTENTS } from './data.js';
+import { CARD_CONTENTS, CAMERA_DP } from './data.js';
 import { cardGeometry, clamp } from './layout.js';
 
 const RIPPLE_DURATION = 1300;
@@ -20,14 +21,31 @@ export class Scene {
     this.flips = new Map();
     this.cards = [];
     this.ripple = null;
+
+    // 整组倾斜层：两条轨道一起旋转，背景幽灵字不参与
+    this.layer = document.createElement('div');
+    this.layer.className = 'tilt-layer';
+    stage.insertBefore(this.layer, this.railBack);
+    this.layer.append(this.railBack, this.railFront);
   }
 
-  /** 两条轨道的左边界：前轨在左，后轨叠在右侧（gap 为负，两轨交叠）。 */
+  /** 两条轨道的左边界：后轨（青瓷）在左，前轨（白）叠在右侧（gap 为负，两轨交叠）。 */
   railLefts(layout = this.layout) {
     return {
-      front: layout.padLeft,
-      back: layout.padLeft + layout.cardW + layout.gap,
+      back: layout.padLeft,
+      front: layout.padLeft + layout.cardW + layout.gap,
     };
+  }
+
+  /** 倾斜层对 x 坐标的影响（rotateY + perspective），供命中判定使用。 */
+  projectX(x, view) {
+    if (!view.tiltDeg) return x;
+    const ox = view.tiltOriginX * view.layout.vw;
+    const th = (view.tiltDeg * Math.PI) / 180;
+    const dx = x - ox;
+    const z = -dx * Math.sin(th);
+    const d = CAMERA_DP * view.layout.u;
+    return ox + (dx * Math.cos(th) * d) / Math.max(1, d - z);
   }
 
   /** 依据视口更新轨道容器的尺寸与位置。 */
@@ -196,7 +214,7 @@ export class Scene {
   /**
    * 把当前状态落到 DOM 上。
    * view: { layout, backOrder, frontOrder, backOffset, frontOffset, backShift,
-   *         frontShift, curve, backTilt, frontTilt, backSpeed, frontSpeed,
+   *         frontShift, curve, tiltDeg, tiltOriginX, backSpeed, frontSpeed,
    *         backPointerY, frontPointerY, pressedKey, highlightIndex, highlightUntil }
    */
   apply(view) {
@@ -210,9 +228,13 @@ export class Scene {
     const backShift = view.backShift || 0;
     const frontShift = view.frontShift || 0;
 
-    // 轨道整体位移 + 倾角
-    this.railBack.style.transform = `translate3d(${backShift}px, 0, 0) rotateY(${view.backTilt}deg)`;
-    this.railFront.style.transform = `translate3d(${frontShift}px, 0, 0) rotateY(${view.frontTilt}deg)`;
+    // 轨道整体位移（peak）；倾角作用在整层上
+    this.railBack.style.transform = `translate3d(${backShift}px, 0, 0)`;
+    this.railFront.style.transform = `translate3d(${frontShift}px, 0, 0)`;
+    this.layer.style.transformOrigin = `${(view.tiltOriginX * 100).toFixed(2)}% 50%`;
+    this.layer.style.transform = view.tiltDeg
+      ? `perspective(${CAMERA_DP * layout.u}px) rotateY(${view.tiltDeg}deg)`
+      : 'none';
 
     const rippleState = this.rippleState();
     const lefts = this.railLefts(layout);
@@ -234,6 +256,7 @@ export class Scene {
       const g = cardGeometry(layout, {
         baseY,
         curve: view.curve,
+        peak: isBack ? backShift : frontShift,
         // 两条轨道同向弯曲，保持恒定叠压关系（与原生单弧心一致）
         arcDir: 1,
         speed: isBack ? view.backSpeed : view.frontSpeed,
@@ -269,9 +292,9 @@ export class Scene {
       // 且卡片被弧线推开后基准坐标不再准确。
       const originX = (isBack ? lefts.back + backShift : lefts.front + frontShift) + x + layout.cardW / 2;
       const originY = y + layout.cardH / 2;
-      rec.sx = originX;
+      rec.sx = this.projectX(originX, view);
       rec.sy = originY;
-      const scale = g.scale * (1 + elev * 0.12) * pressScale * (isBack ? 1.04 : 1);
+      const scale = g.scale * (1 + elev * 0.12) * pressScale * (isBack ? 1.06 : 0.96);
 
       el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
       el.style.opacity = String(g.alpha);
@@ -279,7 +302,9 @@ export class Scene {
 
       const inner = el.firstElementChild;
       if (inner) {
-        inner.style.transform = isBack ? '' : `rotateX(${angle}deg) rotateY(-5deg)`;
+        inner.style.transform = isBack
+          ? ''
+          : `perspective(${1920 * layout.u}px) rotateY(-8deg) rotateX(${angle}deg)`;
       }
       el.classList.toggle('is-highlighted', highlight === 1);
 
@@ -308,7 +333,7 @@ export class Scene {
   }
 
   /**
-   * 按实际渲染位置判断指针落在哪条轨道：0 = 后轨（右），1 = 前轨（左），-1 = 都不在。
+   * 按实际渲染位置判断指针落在哪条轨道：0 = 后轨（左），1 = 前轨（右），-1 = 都不在。
    */
   pickSide(clientX) {
     let back = Infinity;

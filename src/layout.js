@@ -19,17 +19,14 @@ export const mod = (v, m) => ((v % m) + m) % m;
 
 /** 依据视口计算整套轨道度量。 */
 export function createLayout(vw, vh) {
-  // 手机上 1dp ≈ 1css px；宽屏整体放大，避免卡片显得零碎。
-  const u = vw < 620 ? 1 : clamp(Math.min(vw / 1100, vh / 780), 1, 1.35);
+  // 手机上 1dp ≈ 1css px；宽屏按平板的比例整体放大（参考视频约 1000dp × 675dp 的画面）。
+  const u = vw < 620 ? 1 : clamp(Math.min(vw / 1000, vh / 675), 1, 1.7);
 
   const cardW = DP.CARD_W * u;
   const cardH = DP.CARD_H * u;
   const step = DP.STEP * u;
   const gap = DP.GAP * u;
   const groupW = cardW * 2 + gap;
-
-  // 宽屏时把双轨组放在画面偏左的位置，给右侧的排版留出呼吸空间。
-  const padLeft = Math.max(DP.PAD * u, (vw - groupW) / 2 - vw * 0.05);
 
   return {
     vw,
@@ -40,7 +37,8 @@ export function createLayout(vw, vh) {
     step,
     gap,
     groupW,
-    padLeft,
+    // 与原生一致：固定 58dp 左边距，整组位置由 peak 决定
+    padLeft: DP.PAD * u,
     focusY: vh * DP.FOCUS,
     maxDist: Math.max(vh / 2, 1),
   };
@@ -49,11 +47,12 @@ export function createLayout(vw, vh) {
 /**
  * 单张卡片在轨道上的位置。
  * 卡片沿半径 r 的圆弧排布：越靠近焦点越大，超出圆弧两端（|θ| > π）的卡片淡出。
+ * 半径 = max(140dp / curve%, |peak|)，与原生一致。
  * arcDir = 1 时弧线向左弯，-1 时向右弯。
  */
 export function cardGeometry(layout, params) {
   const { cardH, focusY, maxDist, u } = layout;
-  const { baseY, curve, arcDir = 1, speed = 0, pointerY = null } = params;
+  const { baseY, curve, peak = 0, arcDir = 1, speed = 0, pointerY = null } = params;
 
   const center = baseY + cardH / 2;
   const s0 = center - focusY;
@@ -67,11 +66,13 @@ export function cardGeometry(layout, params) {
   const stretch = speed * 70 * u * stretchD * Math.abs(stretchD);
   const s = s0 + stretch;
 
-  const radius = curve < 1 ? Infinity : Math.max(260 * u, (140 * u) / (curve / 100));
-  const theta = radius === Infinity ? 0 : s / radius;
+  const curveAmount = curve / 100;
+  const straight = curveAmount < 0.01;
+  const radius = straight ? Infinity : Math.max((140 * u) / curveAmount, Math.abs(peak));
+  const theta = straight ? 0 : s / radius;
   const thetaC = clamp(theta, -Math.PI, Math.PI);
-  const dx = radius === Infinity ? 0 : arcDir * -radius * (1 - Math.cos(thetaC));
-  const cy = radius === Infinity ? center + stretch : focusY + radius * Math.sin(thetaC);
+  const dx = straight ? 0 : arcDir * -radius * (1 - Math.cos(thetaC));
+  const cy = straight ? center + stretch : focusY + radius * Math.sin(thetaC);
 
   const out = Math.max(0, Math.abs(theta) - Math.PI);
   const alpha = out < 0.001 ? 1 : clamp(1 - out * 2, 0, 1);

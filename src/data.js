@@ -15,24 +15,28 @@ export const CARD_CONTENTS = [
   { tag: '09', title: '编排', subtitle: 'Orchestration', pinyinFull: 'bianpai', pinyinAbbr: 'bp' },
 ];
 
-/** 「倾斜」滑条的原生读数 → CSS rotateY 角度。 */
-export const TILT_TO_DEG = 0.2;
+/**
+ * 整组倾斜（对应原生 graphicsLayer）：
+ *   rotationY         = 读数 / 100 × 48°
+ *   transformOrigin.x = 0.5 − 读数 / 100 × 0.35（占屏宽比例）
+ *   cameraDistance    ≈ 8 英寸 ≈ 1280dp，用 CSS perspective() 近似
+ * 倾斜作用在左右两条轨道的整体上，不是各转各的。
+ */
+export const TILT_ROT = 0.48;
+export const TILT_ORIGIN = 0.0035;
+export const CAMERA_DP = 1280;
 
 /**
- * 三个状态（底部三个小点）。整组双轨在三个位置之间切换，转场带弹簧过冲：
- *   anchor  整组所处的位置
- *           out-left  推到屏幕左侧之外，只露出右半组
- *           left      贴左边缘，整组可见
- *           right     贴右边缘，整组可见
- *   curve   弧线曲率，越大弧越紧（半径 = 140dp / curve%）
- *   tilt    「倾斜」读数（原生单位）。白色轨取全量，青瓷轨取 -0.42 倍，
- *           正负号决定整组向哪一侧偏转。
+ * 三个状态（底部三个小点），数值与原生 BlackWorkspaceData.kt 一致：
+ *   peak   整组横向偏移（dp，两条轨道同时偏移，同时决定弧线半径下限）
+ *   curve  弧线曲率，半径 = max(140dp / curve%, |peak|)
+ *   tilt   「倾斜」读数，原生 PRESET_TILTS = 95 / 65 / -65
  */
 export const PRESETS = [
-  { id: 0, label: 'EDGE', anchor: 'out-left', curve: 13, tilt: 95 },
-  { id: 1, label: 'LEFT', anchor: 'left', curve: 23, tilt: 65 },
-  { id: 2, label: 'RIGHT', anchor: 'right', curve: 33, tilt: -65 },
+  { id: 0, label: 'EDGE', peak: -282, curve: 45, tilt: 95 },
+  { id: 1, label: 'LEFT', peak: 21.5, curve: 16, tilt: 65 },
+  { id: 2, label: 'RIGHT', peak: 735, curve: 14, tilt: -65 },
 ];
 
-/** 启动时的状态：视频里一开始是中间那个点（贴左）。 */
+/** 启动时的状态：视频里一开始是中间那个点。 */
 export const INITIAL_PRESET = 1;
