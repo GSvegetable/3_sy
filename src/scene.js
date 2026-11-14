@@ -82,6 +82,11 @@ export class Scene {
     this.backKey = backKey;
     this.frontKey = frontKey;
 
+    // 顺序变化时记录旧卡片的屏幕位置，让空位由相邻卡片平滑补上。
+    const previous = new Map(this.cards.map((rec) => [
+      `${rec.side}:${rec.copy}:${rec.index}`,
+      { transform: rec.el.style.transform, opacity: rec.el.style.opacity },
+    ]));
     this.railBack.innerHTML = '';
     this.railFront.innerHTML = '';
     this.cards = [];
@@ -91,6 +96,12 @@ export class Scene {
       for (let copy = -copies; copy <= copies; copy += 1) {
         order.forEach((index, row) => {
           const rec = this.createCard(index, side, copy, row);
+          const old = previous.get(`${side}:${copy}:${index}`);
+          if (old?.transform) {
+            rec.el.style.transform = old.transform;
+            rec.el.style.opacity = old.opacity;
+            rec.el.classList.add('is-reflowing');
+          }
           rail.appendChild(rec.el);
           this.cards.push(rec);
         });
@@ -109,7 +120,7 @@ export class Scene {
     el.dataset.side = side;
     el.dataset.row = String(row);
     el.innerHTML = this.cardMarkup(card, side);
-    return { el, index, side, copy, row, card };
+    return { el, index, side, copy, row, card, flipKey: `${side}:${copy}:${index}` };
   }
 
   cardMarkup(card, side) {
@@ -119,27 +130,26 @@ export class Scene {
         <h2>${card.title}</h2>
         <p>${card.subtitle}</p>
       </div>`;
-    if (side === 'back') {
-      return `<div class="inner"><div class="face porcelain"><div class="cast"></div>${body}</div></div>`;
-    }
+    const frontClass = side === 'back' ? 'front porcelain' : 'front';
+    const backClass = side === 'back' ? 'back porcelain-back' : 'back';
     return `<div class="inner">
-      <div class="face front"><div class="cast"></div>${body}</div>
-      <div class="face back"><div class="cast"></div><span class="back-mark">${card.tag}</span></div>
+      <div class="face ${frontClass}"><div class="cast"></div>${body}</div>
+      <div class="face ${backClass}"><div class="cast"></div><span class="back-mark">${card.tag}</span></div>
     </div>`;
   }
 
   /**
    * 长按抽出的卡片：脱离轨道，跟随手指，落点不在任何轨道上时悬浮在场景里。
    */
-  addFreeCard(index, rect, sourceEl) {
+  addFreeCard(index, rect, sourceEl, side = 1, copy = 0) {
     const el = document.createElement('article');
-    el.className = 'card normal free';
+    el.className = `card ${side === 0 ? 'porcelain' : 'normal'} free`;
     el.dataset.i = String(index);
-    el.dataset.copy = '0';
-    el.dataset.side = 'front';
-    el.innerHTML = this.cardMarkup(CARD_CONTENTS[index], 'front');
+    el.dataset.copy = String(copy);
+    el.dataset.side = side === 0 ? 'back' : 'front';
+    el.innerHTML = this.cardMarkup(CARD_CONTENTS[index], side === 0 ? 'back' : 'front');
 
-    // 继承原卡的缩放，避免抽出瞬间的尺寸跳变
+    // 保留抽出瞬间的尺寸与卡面倾角，离开轨道后再缓慢回正。
     let scale = 1;
     try {
       const matrix = new DOMMatrixReadOnly(window.getComputedStyle(sourceEl).transform);
@@ -147,14 +157,25 @@ export class Scene {
     } catch {
       /* 浏览器不支持时保持 1 */
     }
+    const sourceInner = sourceEl.firstElementChild;
+    const freeInner = el.firstElementChild;
+    const originalTilt = sourceInner ? window.getComputedStyle(sourceInner).transform : 'none';
+    if (freeInner && originalTilt && originalTilt !== 'none') {
+      freeInner.style.transform = originalTilt;
+    }
 
-    // 舞台带 perspective，是 fixed 元素的包含块，所以换算成舞台内坐标
     const stageRect = this.stage.getBoundingClientRect();
     el.style.left = `${rect.left - stageRect.left}px`;
     el.style.top = `${rect.top - stageRect.top}px`;
     el.style.transform = `scale(${scale})`;
     this.stage.appendChild(el);
-    return { el, index, scale };
+
+    requestAnimationFrame(() => {
+      if (!freeInner) return;
+      freeInner.style.transition = 'transform 460ms cubic-bezier(0.22, 1, 0.36, 1)';
+      freeInner.style.transform = 'perspective(1800px) rotateY(0deg) rotateX(0deg)';
+    });
+    return { el, index, scale, side };
   }
 
   moveFreeCard(rec, dx, dy) {
@@ -173,8 +194,8 @@ export class Scene {
     return this.flips.get(index);
   }
 
-  toggleFlip(index) {
-    const state = this.flipState(index);
+  toggleFlip(index, side, copy) {
+    const state = this.flipState(`${side === 0 ? 'back' : 'front'}:${copy}:${index}`);
     state.target = state.target === 180 ? 0 : 180;
     return state.target === 180;
   }
@@ -265,9 +286,9 @@ export class Scene {
       el.style.visibility = 'visible';
       rec.hidden = false;
 
-      const state = isBack ? null : this.flipState(rec.index);
-      const angle = state ? state.angle : 0;
-      const elev = state ? state.elev : 0;
+      const state = this.flipState(rec.flipKey);
+      const angle = state.angle;
+      const elev = state.elev;
       const arch = Math.sin(clamp(angle / 180, 0, 1) * Math.PI) * 12 * layout.u;
       const lift = elev * 26 * layout.u + arch;
 
@@ -293,9 +314,7 @@ export class Scene {
 
       const inner = el.firstElementChild;
       if (inner) {
-        inner.style.transform = isBack
-          ? ''
-          : `perspective(${1920 * layout.u}px) rotateY(-8deg) rotateX(${angle}deg)`;
+        inner.style.transform = `perspective(${1920 * layout.u}px) rotateY(-8deg) rotateX(${angle}deg)`;
       }
       el.classList.toggle('is-highlighted', highlight === 1);
 
