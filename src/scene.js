@@ -2,8 +2,9 @@
  * 场景层：负责轨道 DOM 的构建、卡片几何的应用与双轨层级命中。
  *
  * 双轨结构（对照原生源码与参考视频）：
- *   后轨（左）= 青瓷磨砂玻璃卡面，偶数序号卡片，不翻面，压在上层；
- *   前轨（右）= 白色卡面，奇数序号卡片，点击翻面，被左轨压住一部分；
+ *   后轨（左）= 青瓷玻璃卡面，偶数序号卡片，压在上层；
+ *   前轨（右）= 白色卡面，奇数序号卡片，被左轨压住一部分；
+ *   两条轨道的每个实体卡片都可独立翻面；
  *   两条轨道都循环滚动；整组放在一个 tilt-layer 里一起旋转（原生同样是整层 rotationY）。
  */
 import { CARD_CONTENTS, CAMERA_DP } from './data.js';
@@ -71,7 +72,7 @@ export class Scene {
 
   /**
    * 依据两条轨道的卡片顺序重建卡片元素。
-   * 顺序变化（长按抽卡）或视口高度变化后调用，翻面状态按卡片序号保留。
+   * 顺序变化（长按抽卡）或视口高度变化后调用，实体卡片翻面状态按轨道、副本与序号保留。
    */
   syncOrders(backOrder, frontOrder) {
     const copiesBack = this.copiesFor(backOrder.length);
@@ -103,6 +104,7 @@ export class Scene {
             rec.el.classList.add('is-reflowing');
           }
           rail.appendChild(rec.el);
+          if (rec.el.classList.contains('is-reflowing')) void rec.el.offsetWidth;
           this.cards.push(rec);
         });
       }
