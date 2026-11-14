@@ -40,10 +40,8 @@ export class GlassRefraction {
       const h = Math.max(1, Math.round(rect.height * scale));
       const clone = this.stage.cloneNode(true);
       clone.querySelectorAll('.rail-back,.glass-refraction,.status,.search-dock').forEach((el) => el.remove());
-      clone.querySelectorAll('.tilt-layer').forEach((el) => {
-        el.style.transform = 'none';
-        el.style.transformStyle = 'flat';
-      });
+      // Preserve the live 3D transform: the glass face is measured after projection,
+      // so the background snapshot must use the same projected coordinate space.
       clone.style.width = rect.width + 'px';
       clone.style.height = rect.height + 'px';
       clone.style.position = 'relative';
