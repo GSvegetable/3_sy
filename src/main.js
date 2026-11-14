@@ -101,7 +101,7 @@ function setPreset(next) {
   if (next === state.presetIndex || !state.layout) return;
   state.presetIndex = next;
   // 给弹簧一个顺势初速度，让整组不是“瞬移”，而是带惯性地甩向新位置。
-  const direction = Math.sign(PRESETS[next].peak - state.peak) || Math.sign(next - state.presetIndex);
+  const direction = Math.sign(PRESETS[next].peak - state.peak);
   state.peakV = direction * Math.min(520, 220 + Math.abs(PRESETS[next].peak - state.peak) * 0.12);
   state.curveV = Math.sign(PRESETS[next].curve - state.curve) * 18;
   state.tiltV = Math.sign(PRESETS[next].tilt - state.tilt) * 95;
