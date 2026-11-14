@@ -263,7 +263,11 @@ export class Scene {
       const scale = g.scale * (1 + elev * 0.12) * (isBack ? 1.06 : 0.96);
 
       el.style.transform = `translate3d(${x}px, ${y + trackY}px, 0) scale(${scale})`;
-      el.style.setProperty('--card-alpha', String(g.alpha));
+      const cardAlpha = String(g.alpha);
+      if (rec.alpha !== cardAlpha) {
+        el.style.setProperty('--card-alpha', cardAlpha);
+        rec.alpha = cardAlpha;
+      }
       el.style.zIndex = String(Math.round(baseZ(rec, g.smooth) + elev * 100 + highlight * 1000));
 
       const inner = el.firstElementChild;
