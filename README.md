@@ -15,7 +15,7 @@ Android 版 `BlackWorkspaceScreen` 的浏览器移植：纯黑底、巨幅幽灵
 
 **三个状态**（底部三个小点，横滑或点小点切换）
 
-| 状态 | 位置 | 個斜读数 |
+| 状态 | 位置 | 倾斜读数 |
 | --- | --- | --- |
 | 01 EDGE | 整组推到屏幕左侧之外，只露右半组 | 95 |
 | 02 LEFT | 贴左边缘，整组可见（启动状态） | 65 |
@@ -38,7 +38,7 @@ Android 版 `BlackWorkspaceScreen` 的浏览器移植：纯黑底、巨幅幽灵
 - 补齐原生缺失的背景层：`AI AGENT` / `RIPPLE` / `WATER SYSTEM` 三组巨幅幽灵排版（`rgba(255,255,255,.085)`），压在卡片之下。
 - 卡面按参考设备重做：近白冷调渐变（`#FDFEFE → #F4F9FC → #E3ECF5`）、顶部投影、发丝内描边；标题深藏青 `#001028`（衬线），副标题钢蓝 `#5A82AE` 斜体衬线。
 - 青瓷材质（`#B8CBCC → #E6EFF0` + backdrop blur），压暗一档，与白色轨拉开层次。
-- 透视改为舞台级 `perspective: 1400px`，轨道只保留 `rotateY` 与 `transform-origin`；此前 `perspective(8px)` 会把轨道压成畜形。
+- 透视改为舞台级 `perspective: 1400px`，轨道只保留 `rotateY` 与 `transform-origin`；此前 `perspective(8px)` 会把轨道压成畸形。
 - 尺寸随视口缩放（手机 1:1，宽屏最多放大 1.35 倍），卡片间距、圆角、字号全部按同一比例推导。
 
 **交互**
