@@ -143,54 +143,6 @@ export class Scene {
     </div>`;
   }
 
-  /**
-   * 长按抽出的卡片：脱离轨道，跟随手指，落点不在任何轨道上时悬浮在场景里。
-   */
-  addFreeCard(index, rect, sourceEl, side = 1, copy = 0) {
-    const el = document.createElement('article');
-    el.className = `card ${side === 0 ? 'porcelain' : 'normal'} free`;
-    el.dataset.i = String(index);
-    el.dataset.copy = String(copy);
-    el.dataset.side = side === 0 ? 'back' : 'front';
-    el.innerHTML = this.cardMarkup(CARD_CONTENTS[index], side === 0 ? 'back' : 'front');
-
-    // 保留抽出瞬间的尺寸与卡面倾角，离开轨道后再缓慢回正。
-    let scale = 1;
-    try {
-      const matrix = new DOMMatrixReadOnly(window.getComputedStyle(sourceEl).transform);
-      if (matrix && Number.isFinite(matrix.a) && matrix.a > 0) scale = matrix.a;
-    } catch {
-      /* 浏览器不支持时保持 1 */
-    }
-    const sourceInner = sourceEl.firstElementChild;
-    const freeInner = el.firstElementChild;
-    const originalTilt = sourceInner ? window.getComputedStyle(sourceInner).transform : 'none';
-    if (freeInner && originalTilt && originalTilt !== 'none') {
-      freeInner.style.transform = originalTilt;
-    }
-
-    const stageRect = this.stage.getBoundingClientRect();
-    el.style.left = `${rect.left - stageRect.left}px`;
-    el.style.top = `${rect.top - stageRect.top}px`;
-    el.style.transform = `scale(${scale})`;
-    this.stage.appendChild(el);
-
-    requestAnimationFrame(() => {
-      if (!freeInner) return;
-      freeInner.style.transition = 'transform 460ms cubic-bezier(0.22, 1, 0.36, 1)';
-      freeInner.style.transform = 'perspective(1800px) rotateY(0deg) rotateX(0deg)';
-    });
-    return { el, index, scale, side };
-  }
-
-  moveFreeCard(rec, dx, dy) {
-    rec.el.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${rec.scale})`;
-  }
-
-  removeFreeCard(rec) {
-    rec.el.remove();
-  }
-
   /** 翻转状态：0 → 正面，180 → 背面。 */
   flipState(index) {
     if (!this.flips.has(index)) {
@@ -229,7 +181,7 @@ export class Scene {
    * 把当前状态落到 DOM 上。
    * view: { layout, backOrder, frontOrder, backOffset, frontOffset, backShift,
    *         frontShift, curve, tiltDeg, tiltOriginX, backSpeed, frontSpeed,
-   *         backPointerY, frontPointerY, pressedKey, highlightIndex, highlightUntil }
+   *         backPointerY, frontPointerY, highlightIndex, highlightUntil }
    */
   apply(view) {
     const { layout } = view;
@@ -296,9 +248,6 @@ export class Scene {
       const elev = state.elev;
       const arch = Math.sin(clamp(angle / 180, 0, 1) * Math.PI) * 12 * layout.u;
       const lift = elev * 26 * layout.u + arch;
-
-      const pressed = view.pressedKey === `${rec.index}_${rec.copy}`;
-      const pressScale = pressed ? 0.97 : 1;
       const highlight =
         view.highlightIndex === rec.index && performance.now() < view.highlightUntil ? 1 : 0;
 
@@ -311,7 +260,7 @@ export class Scene {
       const originY = y + trackY + layout.cardH / 2;
       rec.sx = this.projectX(originX, view);
       rec.sy = originY;
-      const scale = g.scale * (1 + elev * 0.12) * pressScale * (isBack ? 1.06 : 0.96);
+      const scale = g.scale * (1 + elev * 0.12) * (isBack ? 1.06 : 0.96);
 
       el.style.transform = `translate3d(${x}px, ${y + trackY}px, 0) scale(${scale})`;
       el.style.opacity = String(g.alpha);
