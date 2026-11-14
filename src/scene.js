@@ -109,6 +109,9 @@ export class Scene {
     };
     build(backOrder, 'back', this.railBack, copiesBack);
     build(frontOrder, 'front', this.railFront, copiesFront);
+    window.setTimeout(() => {
+      this.cards.forEach((rec) => rec.el.classList.remove('is-reflowing'));
+    }, 430);
   }
 
   createCard(index, side, copy, row) {
