@@ -132,11 +132,13 @@ export function attachGestures(stage, handlers) {
     const distance = Math.hypot(dx, dy);
     if (!hold.moved && distance > touchSlop()) {
       hold.moved = true;
-      window.clearTimeout(hold.timer);
-      if (hold.longPressed) {
-        hold.extracted = true;
-        handlers.onExtractStart(hold.index, hold.el, hold.side, hold.copy);
-      }
+      if (!hold.longPressed) window.clearTimeout(hold.timer);
+    }
+    // 抽卡方向是横向离开轨道；单纯上下轻微移动不会把卡片抬起。
+    const draggedOut = Math.abs(dx) > touchSlop() && Math.abs(dx) > Math.abs(dy) * 0.9;
+    if (hold.longPressed && draggedOut && !hold.extracted) {
+      hold.extracted = true;
+      handlers.onExtractStart(hold.index, hold.el, hold.side, hold.copy);
     }
     if (hold.extracted) {
       handlers.onExtractMove(dx, dy);
