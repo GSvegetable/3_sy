@@ -9,7 +9,7 @@ const LONG_PRESS_MS = 400;
 const TAP_MAX_MS = 500;
 
 export function attachGestures(stage, handlers) {
-  const { cardWidth, getSide, isBlocked } = handlers;
+  const { getSide, isBlocked } = handlers;
 
   let gesture = null;
   let hold = null;
