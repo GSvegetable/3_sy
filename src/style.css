@@ -214,14 +214,6 @@ body {
     0 0 26px rgba(90, 170, 200, 0.35);
 }
 
-/* 长按抽出的卡片 */
-.card.free {
-  position: fixed;
-  z-index: 30000;
-  pointer-events: none;
-  filter: drop-shadow(0 28px 30px rgba(0, 0, 0, 0.55));
-}
-
 /* ------------------------------------------------------- 上下黑色渐隐 */
 
 .stage::before,
