@@ -116,18 +116,6 @@ body {
   -webkit-backface-visibility: hidden;
 }
 
-/* 波纹扫过时，靠近波前的位置提亮 */
-.face::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: radial-gradient(circle at var(--glow-x, 50%) var(--glow-y, 50%), rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 55%);
-  opacity: var(--glow, 0);
-  mix-blend-mode: screen;
-}
-
 .face.front {
   background: linear-gradient(176deg, var(--paper-top) 0%, var(--paper-mid) 48%, var(--paper-bottom) 100%);
   box-shadow:
