@@ -187,10 +187,10 @@ body {
   white-space: nowrap;
 }
 
-.face.porcelain .copy h2 { color: #1d383b; }
-.face.porcelain .copy p  { color: rgba(96, 146, 150, 0.95); }
-.face.porcelain .eyebrow { color: rgba(40, 86, 90, 0.55); }
-.face.porcelain .cast { background: linear-gradient(180deg, rgba(20, 60, 60, 0.14) 0%, rgba(20, 60, 60, 0.04) 48%, transparent 100%); }
+.face.porcelain .copy h2 { color: rgba(255,255,255,.94); }
+.face.porcelain .copy p  { color: rgba(255,255,255,.72); }
+.face.porcelain .eyebrow { color: rgba(255,255,255,.68); }
+.face.porcelain .cast { display: none; }
 
 .back-mark {
   position: absolute;
