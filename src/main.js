@@ -26,7 +26,8 @@ const statusLabel = document.querySelector('#statusLabel');
 const state = {
   layout: null,
   presetIndex: INITIAL_PRESET,
-  // 三个弹簧量：x 当前值，v 速度；peak 单位 dp，tilt 为原生读数
+  transition: null,
+  // 三个状态量：peak 单位 dp，tilt 为原生读数
   peak: PRESETS[INITIAL_PRESET].peak,
   peakV: 0,
   curve: PRESETS[INITIAL_PRESET].curve,
@@ -99,32 +100,28 @@ function peakPx(peak) {
 function setPreset(next) {
   next = clamp(next, 0, PRESETS.length - 1);
   if (next === state.presetIndex || !state.layout) return;
+
+  const target = PRESETS[next];
+  const distance = Math.abs(target.peak - state.peak);
+  // 从当前画面接续到目标，不叠加人为初速度，避免突然弹射。
+  state.transition = {
+    from: { peak: state.peak, curve: state.curve, tilt: state.tilt },
+    to: target,
+    started: performance.now(),
+    duration: clamp(850 + distance * 0.34, 900, 1150),
+  };
   state.presetIndex = next;
-  // 给弹簧一个顺势初速度，让整组不是“瞬移”，而是带惯性地甩向新位置。
-  const direction = Math.sign(PRESETS[next].peak - state.peak);
-  state.peakV = direction * Math.min(520, 220 + Math.abs(PRESETS[next].peak - state.peak) * 0.12);
-  state.curveV = Math.sign(PRESETS[next].curve - state.curve) * 18;
-  state.tiltV = Math.sign(PRESETS[next].tilt - state.tilt) * 95;
   hapticReverse();
 
-  // 波纹从目标位置的整组中心荡开
+  // 波纹放慢，与整组移动节奏一致
   const { padLeft, groupW, focusY } = state.layout;
-  scene.startRipple(padLeft + groupW / 2 + peakPx(PRESETS[next].peak), focusY, PRESETS[next].curve);
+  scene.startRipple(padLeft + groupW / 2 + peakPx(target.peak), focusY, target.curve);
   updateStatus();
 }
 
-/** 原生 spring(dampingRatio = 0.82, stiffness = StiffnessLow = 200)。 */
-const SPRING_K = 200;
-const SPRING_C = 2 * 0.82 * Math.sqrt(SPRING_K);
-function springStep(x, v, target, dt) {
-  let t = dt;
-  while (t > 0) {
-    const h = Math.min(t, 0.004);
-    v += (-SPRING_K * (x - target) - SPRING_C * v) * h;
-    x += v * h;
-    t -= h;
-  }
-  return [x, v];
+/** 五次 smoothstep：起步和收尾都柔和，中段匀顺，不产生突兀过冲。 */
+function smoothStep5(t) {
+  return t * t * t * (t * (t * 6 - 15) + 10);
 }
 
 function updateStatus() {
@@ -341,12 +338,21 @@ function frame(now) {
   state.lastFrame = now;
   const fs = dt / 16.667;
 
-  // 状态切换：peak / curve / tilt 各走一条弹簧追预设目标
-  const target = PRESETS[state.presetIndex];
-  const sec = dt / 1000;
-  [state.peak, state.peakV] = springStep(state.peak, state.peakV, target.peak, sec);
-  [state.curve, state.curveV] = springStep(state.curve, state.curveV, target.curve, sec);
-  [state.tilt, state.tiltV] = springStep(state.tilt, state.tiltV, target.tilt, sec);
+  // 三个状态参数共用同一条缓动曲线，确保两条轨道、弧度和倾角像一个整体移动。
+  if (state.transition) {
+    const motion = state.transition;
+    const t = clamp((now - motion.started) / motion.duration, 0, 1);
+    const eased = smoothStep5(t);
+    state.peak = motion.from.peak + (motion.to.peak - motion.from.peak) * eased;
+    state.curve = motion.from.curve + (motion.to.curve - motion.from.curve) * eased;
+    state.tilt = motion.from.tilt + (motion.to.tilt - motion.from.tilt) * eased;
+    if (t >= 1) {
+      state.peak = motion.to.peak;
+      state.curve = motion.to.curve;
+      state.tilt = motion.to.tilt;
+      state.transition = null;
+    }
+  }
 
   // 搜索定位
   if (state.searchMotion) {
