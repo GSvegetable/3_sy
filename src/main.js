@@ -260,10 +260,8 @@ attachGestures(stage, {
       hapticRelease(clamp(Math.abs(state.frontVelocity) / 55, 0, 1));
     }
   },
-  onTap: (index, side) => {
-    // 青瓷轨（左）不响应翻面
-    if (side === 0) return;
-    const flipped = scene.toggleFlip(index);
+  onTap: (index, side, copy) => {
+    const flipped = scene.toggleFlip(index, side, copy);
     hapticTick(0.65);
     if (flipped) {
       state.highlightIndex = index;
@@ -273,14 +271,14 @@ attachGestures(stage, {
   onPress: (key, pressed) => {
     state.pressedKey = pressed ? key : null;
   },
-  onExtractStart: (index, el) => {
+  onExtractStart: (index, el, side) => {
     const rect = el.getBoundingClientRect();
-    const side = el.dataset.side === 'back' ? 0 : 1;
+    // 先从仍在轨道中的原卡复制当前视觉状态，再移除原位置。
+    state.free = scene.addFreeCard(index, rect, el, side, Number(el.dataset.copy));
     const order = side === 0 ? state.backOrder : state.frontOrder;
     const at = order.indexOf(index);
     if (at >= 0) order.splice(at, 1);
     measure();
-    state.free = scene.addFreeCard(index, rect, el);
     hapticTick(1);
   },
   onExtractMove: (dx, dy) => {
@@ -288,13 +286,14 @@ attachGestures(stage, {
   },
   onExtractEnd: (clientX) => {
     if (!state.free) return;
-    const side = sideAt(clientX);
+    const destination = sideAt(clientX);
     const index = state.free.index;
+    const side = destination < 0 ? state.free.side : destination;
     scene.removeFreeCard(state.free);
     state.free = null;
     if (side === 0) {
       state.backOrder.push(index);
-    } else if (side === 1) {
+    } else {
       state.frontOrder.push(index);
     }
     measure();
