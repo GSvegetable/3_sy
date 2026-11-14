@@ -12,6 +12,8 @@
 .face.porcelain,.face.porcelain-back{position:absolute;isolation:isolate;overflow:hidden;border-radius:calc(var(--card-radius,12px)*1.5);
  border:1px solid rgba(255,255,255,.42);background:rgba(255,255,255,.025);
  -webkit-backdrop-filter:blur(1.8px) saturate(1.22) contrast(1.08);backdrop-filter:blur(1.8px) saturate(1.22) contrast(1.08);
+ -webkit-backdrop-filter:url(#liquid-glass-refraction) blur(1.8px) saturate(1.22) contrast(1.08);
+ backdrop-filter:url(#liquid-glass-refraction) blur(1.8px) saturate(1.22) contrast(1.08);
  box-shadow:0 24px 48px -22px rgba(0,0,0,.72),0 2px 10px rgba(255,255,255,.055),inset 0 1.2px 0 rgba(255,255,255,.72),
  inset 1px 0 0 rgba(255,255,255,.22),inset -1px 0 0 rgba(255,255,255,.12),inset 0 -1px 0 rgba(255,255,255,.24)}
 .face.porcelain-back{background:rgba(255,255,255,.018);-webkit-backdrop-filter:blur(2.2px) saturate(1.16) contrast(1.06);backdrop-filter:blur(2.2px) saturate(1.16) contrast(1.06)}
