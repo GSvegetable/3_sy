@@ -96,7 +96,6 @@ body {
   transform-origin: 50% 50%;
   transform-style: preserve-3d;
   pointer-events: auto;
-  will-change: transform, opacity;
 }
 
 .inner {
