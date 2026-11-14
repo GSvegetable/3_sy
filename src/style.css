@@ -136,15 +136,59 @@ body {
     inset 0 0 0 1px rgba(255, 255, 255, 0.8);
 }
 
-/* 后轨：青瓷质感 */
+/* 后轨：青瓷 Liquid Glass，参考 iOS 玻璃材质的透光、雾化与边缘高光 */
 .face.porcelain {
-  background: linear-gradient(104deg, rgba(184, 203, 204, 0.95) 0%, rgba(210, 224, 224, 0.96) 46%, rgba(230, 239, 240, 0.97) 100%);
+  position: absolute;
+  isolation: isolate;
+  background:
+    linear-gradient(132deg,
+      rgba(226, 245, 244, 0.80) 0%,
+      rgba(173, 207, 207, 0.73) 42%,
+      rgba(205, 226, 226, 0.69) 100%);
   box-shadow:
-    0 22px 40px -20px rgba(0, 0, 0, 0.55),
-    inset 0 0 0 1px rgba(110, 159, 163, 0.32),
-    inset 0 1px 0 rgba(255, 255, 255, 0.72);
-  backdrop-filter: blur(8px) saturate(1.12);
-  -webkit-backdrop-filter: blur(8px) saturate(1.12);
+    0 24px 44px -22px rgba(0, 0, 0, 0.58),
+    0 5px 14px rgba(7, 30, 35, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 0 0 1px rgba(220, 246, 244, 0.48),
+    inset 0 -18px 34px -26px rgba(32, 86, 88, 0.48);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5) brightness(1.08);
+  backdrop-filter: blur(16px) saturate(1.5) brightness(1.08);
+}
+
+/* 玻璃表面的宽幅柔光与极细内沿，不使用重型实时折射，避免多卡片滚动掉帧 */
+.face.porcelain::before,
+.face.porcelain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.face.porcelain::before {
+  z-index: 0;
+  background:
+    linear-gradient(118deg,
+      rgba(255, 255, 255, 0.34) 0%,
+      rgba(255, 255, 255, 0.10) 26%,
+      transparent 52%,
+      rgba(228, 255, 252, 0.10) 100%),
+    linear-gradient(180deg,
+      rgba(255, 255, 255, 0.16),
+      transparent 38%,
+      rgba(30, 83, 85, 0.07));
+}
+.face.porcelain::after {
+  z-index: 2;
+  border: 1px solid rgba(232, 255, 252, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    inset 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(83, 139, 140, 0.13);
+}
+.face.porcelain > .cast,
+.face.porcelain > .eyebrow,
+.face.porcelain > .copy {
+  z-index: 1;
 }
 
 .cast {
