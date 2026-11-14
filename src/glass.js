@@ -100,7 +100,8 @@ export class GlassRefraction {
     const sourceY = (r.top - stage.top) * sourceScale;
     const sourceW = r.width * sourceScale;
     const sourceH = r.height * sourceScale;
-    const bulge = Math.min(r.width, r.height) * 0.105;
+    // Keep lens displacement subtle so text on the covered small rail stays legible.
+    const bulge = Math.min(10, Math.min(r.width, r.height) * 0.04);
     const point = (x, y) => {
       const nx = x / r.width * 2 - 1, ny = y / r.height * 2 - 1;
       const edge = Math.min(1, Math.max(0, (1 - Math.max(Math.abs(nx), Math.abs(ny))) / 0.52));
