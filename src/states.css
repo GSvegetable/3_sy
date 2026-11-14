@@ -1,78 +1,50 @@
-/* 横向状态切换；左侧大轨位于上层。 */
+/* 双轨纯色方案：左侧大轨在上，右侧小轨在下。 */
 .stage{perspective:none}
 .tilt-layer{position:absolute;inset:0;z-index:1;pointer-events:none}
 .rail-back{z-index:3}
 .rail-front{z-index:2}
 
-.face.front{background:linear-gradient(180deg,#fff 0%,#f0f5f4 100%);box-shadow:0 22px 44px -18px rgba(0,0,0,.6),0 2px 8px rgba(0,0,0,.3)}
-.face.back{background:linear-gradient(180deg,#f2f6f5 0%,#e3ebea 100%)}
-.face.front .cast{height:40%;background:linear-gradient(180deg,rgba(0,0,0,.30),rgba(0,0,0,.14) 33%,rgba(0,0,0,.04) 66%,transparent)}
-.face.front .eyebrow{left:12%;top:12.1%;font-size:calc(var(--card-w,150px)*.06);color:rgba(0,0,0,.42)}
-.face.front .copy{left:12%;right:8%;bottom:12.1%}
-.face.front .copy h2{color:#0a0a0a;letter-spacing:-.03em}
-.face.front .copy p{font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-style:normal;font-weight:500;font-size:calc(var(--card-w,150px)*.06);letter-spacing:.08em;color:rgba(0,0,0,.52)}
-
-/* 左轨：轻量原生玻璃。透明透射由浏览器直接合成，不再生成背景快照或逐帧绘制网格。 */
+/* 大轨道：深钴蓝。 */
 .face.porcelain,.face.porcelain-back{
  position:absolute;
  overflow:hidden;
  border:0;
  border-radius:calc(var(--card-radius,12px)*1.5);
- background:rgba(218,234,236,.045);
- -webkit-backdrop-filter:blur(1.15px) saturate(1.28) contrast(1.045);
- backdrop-filter:blur(1.15px) saturate(1.28) contrast(1.045);
- box-shadow:
-   0 18px 42px -25px rgba(0,0,0,.78),
-   inset 0 0 0 .5px rgba(255,255,255,.09),
-   inset 0 1px 2px rgba(255,255,255,.17),
-   inset 0 -9px 20px rgba(0,0,0,.12);
+ background:#3157D5;
+ box-shadow:none;
+ -webkit-backdrop-filter:none;
+ backdrop-filter:none;
 }
-.face.porcelain-back{
- background:rgba(218,234,236,.055);
+.face.porcelain-back{background:#3157D5}
+
+/* 小轨道：珊瑚橙。 */
+.face.front:not(.porcelain),.face.back:not(.porcelain-back){
+ background:#FF7058;
+ box-shadow:none;
 }
-.face.porcelain::before,.face.porcelain-back::before{
- content:"";
- position:absolute;
- inset:0;
- border-radius:inherit;
- pointer-events:none;
- z-index:1;
- background:
-  radial-gradient(115% 52% at 8% 0%,rgba(255,255,255,.24),transparent 62%),
-  radial-gradient(90% 70% at 100% 100%,rgba(205,231,236,.09),transparent 72%),
-  linear-gradient(116deg,transparent 0%,rgba(255,255,255,.13) 18%,rgba(255,255,255,.02) 25%,transparent 37%),
-  linear-gradient(180deg,rgba(255,255,255,.14),transparent 13%,transparent 82%,rgba(0,0,0,.12));
-}
-.face.porcelain::after,.face.porcelain-back::after{
- content:"";
- position:absolute;
- inset:1px;
- border-radius:inherit;
- pointer-events:none;
- z-index:3;
- background:
-  linear-gradient(180deg,rgba(255,255,255,.28),transparent 9%) top/100% 28% no-repeat,
-  linear-gradient(90deg,rgba(255,255,255,.15),transparent 8%) left/14% 100% no-repeat,
-  linear-gradient(0deg,rgba(255,255,255,.10),transparent 16%) bottom/72% 20% no-repeat;
- opacity:.56;
-}
-.face.porcelain>.cast,.face.porcelain-back>.cast{display:none}
-.face.porcelain>.eyebrow,.face.porcelain>.copy,.face.porcelain-back>.back-mark{z-index:2}
+.face.front .cast,.face.back .cast,
+.face.porcelain .cast,.face.porcelain-back .cast{display:none}
+.face.porcelain::before,.face.porcelain::after,
+.face.porcelain-back::before,.face.porcelain-back::after{content:none}
+
+/* 纯色卡面使用清晰、高对比度文字。 */
+.face.porcelain>.eyebrow,.face.porcelain>.copy,
+.face.porcelain-back>.back-mark{z-index:2}
 .face.porcelain .eyebrow{
  left:10.7%;
  top:auto;
  bottom:calc(var(--card-h,132px)*.405);
  font-size:calc(var(--card-w,150px)*.053);
  letter-spacing:.22em;
- color:rgba(255,255,255,.76);
- text-shadow:0 1px 5px rgba(0,0,0,.58);
+ color:#FFFFFF;
+ text-shadow:none;
 }
 .face.porcelain .copy{left:10.7%;right:8%;bottom:9.1%}
 .face.porcelain .copy h2{
  font-size:calc(var(--card-w,150px)*.147);
  letter-spacing:-.03em;
- color:rgba(255,255,255,.97);
- text-shadow:0 1px 8px rgba(0,0,0,.58);
+ color:#FFFFFF;
+ text-shadow:none;
 }
 .face.porcelain .copy p{
  font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -80,11 +52,15 @@
  font-weight:500;
  font-size:calc(var(--card-w,150px)*.06);
  letter-spacing:.04em;
- color:rgba(255,255,255,.82);
- text-shadow:0 1px 6px rgba(0,0,0,.55);
+ color:rgba(255,255,255,.88);
+ text-shadow:none;
 }
-.face.porcelain-back .back-mark{color:rgba(255,255,255,.78);text-shadow:0 1px 8px rgba(255,255,255,.18)}
+.face.porcelain-back .back-mark{color:rgba(255,255,255,.22);text-shadow:none}
 
-/* 几何末端淡出放在卡面本身，避免祖先 opacity 截断玻璃的背板采样。 */
+.face.front:not(.porcelain) .eyebrow{color:rgba(25,35,55,.58);text-shadow:none}
+.face.front:not(.porcelain) .copy h2{color:#18243D;text-shadow:none}
+.face.front:not(.porcelain) .copy p{color:rgba(24,36,61,.72);text-shadow:none}
+.face.back:not(.porcelain-back) .back-mark{color:rgba(24,36,61,.22)}
+
 .card .face{opacity:var(--card-alpha,1)}
 .card.is-reflowing{transition:transform 390ms cubic-bezier(.22,1,.36,1)}
