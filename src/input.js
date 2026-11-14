@@ -4,7 +4,7 @@
  * 卡片的点击翻面与长按抽出由轨道容器单独处理。
  */
 
-const SWIPE_DISTANCE_RATIO = 0.075; // 横滑距离阈值：手机上约 30–40px
+const SWIPE_DISTANCE_RATIO = 0.10; // 横滑距离阈值：约为屏幕宽度的 10%
 const LONG_PRESS_MS = 400;
 const TAP_MAX_MS = 500;
 
@@ -28,7 +28,7 @@ export function attachGestures(stage, handlers) {
       lastY: event.clientY,
       lastX: event.clientX,
       lastTime: performance.now(),
-      switched: false,
+      horizontal: false,
       dragging: false,
     };
   };
@@ -39,10 +39,9 @@ export function attachGestures(stage, handlers) {
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
 
-    const swipeThreshold = Math.max(28, stage.getBoundingClientRect().width * SWIPE_DISTANCE_RATIO);
-    if (!gesture.switched && Math.abs(dx) > swipeThreshold && Math.abs(dx) > Math.abs(dy) * 1.25) {
-      gesture.switched = true;
-      handlers.onPresetStep(dx > 0 ? 1 : -1);
+    // 横向手势先只识别方向，等手指松开再切换，避免拖动过程中突然跳状态。
+    if (Math.abs(dx) > touchSlop() && Math.abs(dx) > Math.abs(dy) * 1.25) {
+      gesture.horizontal = true;
       event.preventDefault();
       return;
     }
@@ -66,7 +65,25 @@ export function attachGestures(stage, handlers) {
 
   const onUp = (event) => {
     if (!gesture || gesture.id !== event.pointerId) return;
-    if (gesture.dragging) handlers.onDragEnd(gesture.side);
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    const elapsed = Math.max(1, performance.now() - gesture.lastTime);
+    const threshold = Math.max(34, stage.getBoundingClientRect().width * SWIPE_DISTANCE_RATIO);
+    const horizontal = !gesture.dragging && Math.abs(dx) > Math.abs(dy) * 1.25;
+    const deliberateSwipe =
+      horizontal &&
+      (Math.abs(dx) >= threshold || (Math.abs(dx) >= 18 && Math.abs(dx) / elapsed >= 0.55));
+
+    if (gesture.dragging) {
+      handlers.onDragEnd(gesture.side);
+    } else if (deliberateSwipe) {
+      if (hold && hold.id === event.pointerId) {
+        hold.moved = true;
+        window.clearTimeout(hold.timer);
+        handlers.onPress(hold.key, false);
+      }
+      handlers.onPresetStep(dx > 0 ? 1 : -1);
+    }
     gesture = null;
   };
 
