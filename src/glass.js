@@ -11,7 +11,8 @@ export class GlassRefraction {
     this.ctx = this.snapshot.getContext('2d', { alpha: false });
     this.lastCapture = 0;
     this.busy = false;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.dpr = Math.min(window.devicePixelRatio || 1, 1.2);
+    this.lastPaint = 0;
     this.resizeObserver = new ResizeObserver(() => { this.lastCapture = 0; });
     this.resizeObserver.observe(stage);
     this.frame = this.frame.bind(this);
@@ -34,7 +35,7 @@ export class GlassRefraction {
     this.lastCapture = now;
     try {
       const rect = this.stage.getBoundingClientRect();
-      const scale = Math.min(1, 720 / Math.max(rect.width, rect.height));
+      const scale = Math.min(1, 600 / Math.max(rect.width, rect.height));
       const w = Math.max(1, Math.round(rect.width * scale));
       const h = Math.max(1, Math.round(rect.height * scale));
       const clone = this.stage.cloneNode(true);
@@ -92,7 +93,7 @@ export class GlassRefraction {
     ctx.clip();
 
     // A subdivided optical surface samples a displaced point in the live scene.
-    const cols = 18, rows = 22;
+    const cols = 12, rows = 14;
     const sourceScale = this.scale || 1;
     const stage = this.stageRect || this.stage.getBoundingClientRect();
     const sourceX = (r.left - stage.left) * sourceScale;
@@ -132,8 +133,14 @@ export class GlassRefraction {
   }
 
   async frame(now) {
-    if (now - this.lastCapture > 140) await this.capture(now);
-    for (const item of this.cards) this.paint(item);
+    if (now - this.lastCapture > 160) await this.capture(now);
+    if (now - this.lastPaint > 40) {
+      this.lastPaint = now;
+      for (const item of this.cards) {
+        if (!item.face.isConnected) { this.cards.delete(item); continue; }
+        this.paint(item);
+      }
+    }
     requestAnimationFrame(this.frame);
   }
 }
@@ -157,6 +164,10 @@ function triangle(ctx, image, src, dst) {
   ctx.save();
   ctx.beginPath(); ctx.moveTo(dx0, dy0); ctx.lineTo(dx1, dy1); ctx.lineTo(dx2, dy2); ctx.closePath(); ctx.clip();
   ctx.transform(a, b, c, d, e, f);
-  ctx.drawImage(image, 0, 0);
+  const minX = Math.max(0, Math.floor(Math.min(sx0, sx1, sx2)) - 1);
+  const minY = Math.max(0, Math.floor(Math.min(sy0, sy1, sy2)) - 1);
+  const maxX = Math.min(image.width, Math.ceil(Math.max(sx0, sx1, sx2)) + 1);
+  const maxY = Math.min(image.height, Math.ceil(Math.max(sy0, sy1, sy2)) + 1);
+  if (maxX > minX && maxY > minY) ctx.drawImage(image, minX, minY, maxX - minX, maxY - minY, minX, minY, maxX - minX, maxY - minY);
   ctx.restore();
 }
