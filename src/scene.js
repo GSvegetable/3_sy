@@ -17,7 +17,7 @@ export class Scene {
     this.stage = stage;
     this.railBack = stage.querySelector('#railBack');
     this.railFront = stage.querySelector('#railFront');
-    this.rippleRing = stage.querySelector('#rippleRing');
+    this.rippleRing = null;
     this.flips = new Map();
     this.cards = [];
     this.ripple = null;
@@ -231,12 +231,12 @@ export class Scene {
     const frontShift = view.frontShift || 0;
 
     // 轨道整体位移（peak）；倾角作用在整层上
-    this.viewTrackShift = clamp(view.trackShift || 0, 0, 1);
+    this.viewTrackShift = Number.isFinite(view.trackShift) ? view.trackShift : 0;
     const lefts = this.railLefts(layout);
     this.railBack.style.left = `${lefts.back}px`;
     this.railFront.style.left = `${lefts.front}px`;
     this.railBack.style.transform = `translate3d(${backShift}px, 0, 0)`;
-    this.railFront.style.transform = `translate3d(${frontShift}px, ${view.smallTrackY || 0}px, 0)`;
+    this.railFront.style.transform = `translate3d(${frontShift}px, ${view.trackWhipY || 0}px, 0)`;
     this.layer.style.transformOrigin = `${(view.tiltOriginX * 100).toFixed(2)}% 50%`;
     this.layer.style.transform = view.tiltDeg
       ? `perspective(${CAMERA_DP * layout.u}px) rotateY(${view.tiltDeg}deg)`
@@ -295,7 +295,7 @@ export class Scene {
       const y = g.y - lift - highlight * 8 * layout.u;
       // 记录屏幕中心，供命中判定使用：要计入轨道整体位移，
       // 且卡片被弧线推开后基准坐标不再准确。
-      const trackY = !isBack ? (view.smallTrackY || 0) : 0;
+      const trackY = !isBack ? (view.trackWhipY || 0) : 0;
       const originX = (isBack ? lefts.back + backShift : lefts.front + frontShift) + x + layout.cardW / 2;
       const originY = y + trackY + layout.cardH / 2;
       rec.sx = this.projectX(originX, view);
@@ -350,6 +350,9 @@ export class Scene {
       if (rec.side === 'back') back = Math.min(back, distance);
       else front = Math.min(front, distance);
     }
+    const halfCard = this.layout.cardW * 0.52;
+    // 两轨实际重叠的区域由视觉上层的青瓷大轨优先接管，不再按“离哪个中心更近”误判给底层小轨。
+    if (back <= halfCard && front <= halfCard) return 0;
     const nearest = Math.min(back, front);
     if (!Number.isFinite(nearest) || nearest > this.layout.cardW * 1.3) return -1;
     return back <= front ? 0 : 1;
