@@ -34,6 +34,10 @@ const state = {
   curveV: 0,
   tilt: PRESETS[INITIAL_PRESET].tilt,
   tiltV: 0,
+  trackShift: 0,
+  trackShiftV: 0,
+  trackWhipY: 0,
+  arcDirection: 1,
   backOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 0),
   frontOrder: CARD_CONTENTS.map((_, i) => i).filter((i) => i % 2 === 1),
   backOffset: 0,
@@ -107,23 +111,10 @@ function setPreset(next) {
   const now = performance.now();
   const enteringRight = next === 2 && state.presetIndex !== 2;
   const leavingRight = state.presetIndex === 2 && next !== 2;
-  const duration = clamp(820 + distance * 0.25, 850, 980);
-  state.transition = {
-    from: { peak: state.peak, curve: state.curve, tilt: state.tilt },
-    to: target,
-    started: now,
-    duration,
-  };
+  state.transition = { to: target };
   // 第三个预设使用双轨交错甩位，并同步反转弧向；两轨全程保持可见。
   if (enteringRight || leavingRight) {
-    state.trackMotion = {
-      started: now,
-      duration,
-      from: enteringRight ? 0 : 1,
-      to: enteringRight ? 1 : 0,
-      directionFrom: enteringRight ? 1 : -1,
-      directionTo: enteringRight ? -1 : 1,
-    };
+    state.trackMotion = { target: enteringRight ? 1 : 0 };
   }
   state.presetIndex = next;
   hapticReverse();
@@ -133,14 +124,19 @@ function setPreset(next) {
 }
 
 /**
- * 强化版先慢—中段快速—末段慢：五次缓动负责丝滑加速，
- * 末段加入很小的过冲，再自然回到 1，避免机械地刹停。
+ * 连续弹簧动力学：保留当前速度，目标改变时不重置运动。
+ * 半隐式积分并限制子步长，降低高刷新率/掉帧时的数值抖动。
  */
-function smoothStep5(t) {
-  const x = clamp(t, 0, 1);
-  const base = x * x * x * (x * (x * 6 - 15) + 10);
-  const overshoot = 0.42 * x * x * (1 - x) * Math.exp(-(((x - 0.82) / 0.20) ** 2));
-  return base + overshoot;
+function springStep(value, velocity, target, deltaSeconds, stiffness = 170, damping = 25) {
+  let remaining = Math.max(0, deltaSeconds);
+  while (remaining > 0) {
+    const dt = Math.min(remaining, 1 / 120);
+    const acceleration = (target - value) * stiffness - velocity * damping;
+    velocity += acceleration * dt;
+    value += velocity * dt;
+    remaining -= dt;
+  }
+  return { value, velocity };
 }
 
 function updateStatus() {
@@ -360,34 +356,43 @@ function frame(now) {
   state.lastFrame = now;
   const fs = dt / 16.667;
 
-  // 三个状态参数共用同一条缓动曲线，确保两条轨道、弧度和倾角像一个整体移动。
+  // 状态参数使用连续弹簧：快速连续横滑时继承上一段运动速度。
   if (state.transition) {
-    const motion = state.transition;
-    const t = clamp((now - motion.started) / motion.duration, 0, 1);
-    const eased = smoothStep5(t);
-    state.peak = motion.from.peak + (motion.to.peak - motion.from.peak) * eased;
-    state.curve = motion.from.curve + (motion.to.curve - motion.from.curve) * eased;
-    state.tilt = motion.from.tilt + (motion.to.tilt - motion.from.tilt) * eased;
-    if (t >= 1) {
-      state.peak = motion.to.peak;
-      state.curve = motion.to.curve;
-      state.tilt = motion.to.tilt;
+    const target = state.transition.to;
+    const seconds = dt / 1000;
+    let p = springStep(state.peak, state.peakV, target.peak, seconds);
+    let c = springStep(state.curve, state.curveV, target.curve, seconds);
+    let r = springStep(state.tilt, state.tiltV, target.tilt, seconds);
+    state.peak = p.value; state.peakV = p.velocity;
+    state.curve = c.value; state.curveV = c.velocity;
+    state.tilt = r.value; state.tiltV = r.velocity;
+
+    if (
+      Math.abs(target.peak - state.peak) < 0.08 && Math.abs(state.peakV) < 0.45 &&
+      Math.abs(target.curve - state.curve) < 0.015 && Math.abs(state.curveV) < 0.08 &&
+      Math.abs(target.tilt - state.tilt) < 0.02 && Math.abs(state.tiltV) < 0.08
+    ) {
+      state.peak = target.peak; state.peakV = 0;
+      state.curve = target.curve; state.curveV = 0;
+      state.tilt = target.tilt; state.tiltV = 0;
       state.transition = null;
     }
   }
 
-  // 双轨甩位：与整组转场共用同一条先慢后快再慢的过冲缓动。
+  // 第三个状态的双轨换位由同一弹簧驱动；弧线方向跟随轨道位置，
+  // 纵向甩动直接取换位速度，因此起落与横向运动自然关联。
   if (state.trackMotion) {
-    const motion = state.trackMotion;
-    const elapsed = now - motion.started;
-    const t = clamp(elapsed / motion.duration, 0, 1);
-    const eased = smoothStep5(t);
-    state.trackShift = motion.from + (motion.to - motion.from) * eased;
-    state.arcDirection = motion.directionFrom + (motion.directionTo - motion.directionFrom) * eased;
-    state.trackWhipY = Math.sin(Math.PI * t) * (motion.to > motion.from ? -20 : 20) * state.layout.u;
-    if (t >= 1) {
-      state.trackShift = motion.to;
-      state.arcDirection = motion.directionTo;
+    const motion = springStep(state.trackShift, state.trackShiftV, state.trackMotion.target, dt / 1000, 170, 25);
+    state.trackShift = motion.value;
+    state.trackShiftV = motion.velocity;
+    state.arcDirection = 1 - 2 * state.trackShift;
+    const whipLimit = 18 * state.layout.u;
+    state.trackWhipY = clamp(-state.trackShiftV * 1.8 * state.layout.u, -whipLimit, whipLimit);
+
+    if (Math.abs(state.trackMotion.target - state.trackShift) < 0.001 && Math.abs(state.trackShiftV) < 0.006) {
+      state.trackShift = state.trackMotion.target;
+      state.trackShiftV = 0;
+      state.arcDirection = 1 - 2 * state.trackShift;
       state.trackWhipY = 0;
       state.trackMotion = null;
     }
