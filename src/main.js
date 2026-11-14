@@ -53,11 +53,9 @@ const state = {
   dragging: -1,
   backPointerY: NaN,
   frontPointerY: NaN,
-  pressedKey: null,
   highlightIndex: -1,
   highlightUntil: 0,
   searchMotion: null,
-  free: null,
   lastStepBack: 0,
   lastStepFront: 0,
   lastFrame: 0,
@@ -226,7 +224,7 @@ function sideAt(clientX) {
 attachGestures(stage, {
   cardWidth: () => (state.layout ? state.layout.cardW : 150),
   getSide: (x) => sideAt(x),
-  isBlocked: () => Boolean(state.free),
+  isBlocked: () => false,
   onPresetStep: (dir) => setPreset(state.presetIndex + dir),
   onDragStart: (side) => {
     state.dragging = side;
@@ -267,47 +265,6 @@ attachGestures(stage, {
       state.highlightIndex = index;
       state.highlightUntil = performance.now() + 900;
     }
-  },
-  onPress: (key, pressed) => {
-    state.pressedKey = pressed ? key : null;
-  },
-  onExtractStart: (index, el, side) => {
-    const rect = el.getBoundingClientRect();
-    // 先从仍在轨道中的原卡复制当前视觉状态，再移除原位置。
-    state.free = scene.addFreeCard(index, rect, el, side, Number(el.dataset.copy));
-    const order = side === 0 ? state.backOrder : state.frontOrder;
-    const at = order.indexOf(index);
-    if (at >= 0) order.splice(at, 1);
-    // 将剩余轨道整体居中半个卡距：空位上下两侧的卡片各移动半格，向中间合拢。
-    const halfStep = state.layout.step * 0.5;
-    if (side === 0) {
-      state.backOffset -= halfStep;
-      state.backTarget -= halfStep;
-      state.prevBack -= halfStep;
-    } else {
-      state.frontOffset -= halfStep;
-      state.frontTarget -= halfStep;
-      state.prevFront -= halfStep;
-    }
-    measure();
-    hapticTick(1);
-  },
-  onExtractMove: (dx, dy) => {
-    if (state.free) scene.moveFreeCard(state.free, dx, dy);
-  },
-  onExtractEnd: (clientX) => {
-    if (!state.free) return;
-    const destination = sideAt(clientX);
-    const index = state.free.index;
-    const side = destination < 0 ? state.free.side : destination;
-    scene.removeFreeCard(state.free);
-    state.free = null;
-    if (side === 0) {
-      state.backOrder.push(index);
-    } else {
-      state.frontOrder.push(index);
-    }
-    measure();
   },
 });
 
@@ -353,7 +310,6 @@ function buildView() {
     frontSpeed: state.frontVelocity / 55,
     backPointerY: state.backPointerY,
     frontPointerY: state.frontPointerY,
-    pressedKey: state.pressedKey,
     highlightIndex: state.highlightIndex,
     highlightUntil: state.highlightUntil,
   };
