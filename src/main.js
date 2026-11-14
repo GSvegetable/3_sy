@@ -278,6 +278,17 @@ attachGestures(stage, {
     const order = side === 0 ? state.backOrder : state.frontOrder;
     const at = order.indexOf(index);
     if (at >= 0) order.splice(at, 1);
+    // 将剩余轨道整体居中半个卡距：空位上下两侧的卡片各移动半格，向中间合拢。
+    const halfStep = state.layout.step * 0.5;
+    if (side === 0) {
+      state.backOffset -= halfStep;
+      state.backTarget -= halfStep;
+      state.prevBack -= halfStep;
+    } else {
+      state.frontOffset -= halfStep;
+      state.frontTarget -= halfStep;
+      state.prevFront -= halfStep;
+    }
     measure();
     hapticTick(1);
   },
