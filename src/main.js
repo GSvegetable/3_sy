@@ -104,12 +104,25 @@ function setPreset(next) {
   const target = PRESETS[next];
   const distance = Math.abs(target.peak - state.peak);
   // 从当前画面接续到目标，不叠加人为初速度，避免突然弹射。
+  const now = performance.now();
+  const enteringRight = next === 2 && state.presetIndex !== 2;
+  const leavingRight = state.presetIndex === 2 && next !== 2;
   state.transition = {
     from: { peak: state.peak, curve: state.curve, tilt: state.tilt },
     to: target,
-    started: performance.now(),
+    started: now,
     duration: clamp(850 + distance * 0.34, 900, 1150),
   };
+  // 第三个预设沿用原生双轨换位编排：小轨先沉下，随后两轨交错换位并反转弧向，最后小轨从下方归位。
+  if (enteringRight || leavingRight) {
+    state.trackMotion = {
+      started: now,
+      from: enteringRight ? 0 : 1,
+      to: enteringRight ? 1 : 0,
+      directionFrom: enteringRight ? 1 : -1,
+      directionTo: enteringRight ? -1 : 1,
+    };
+  }
   state.presetIndex = next;
   hapticReverse();
 
@@ -314,6 +327,9 @@ function buildView() {
   const shift = state.layout ? peakPx(state.peak) : 0;
   return {
     layout: state.layout,
+    trackShift: state.trackShift || 0,
+    smallTrackY: state.smallTrackY || 0,
+    arcDirection: state.arcDirection || 1,
     backOrder: state.backOrder,
     frontOrder: state.frontOrder,
     backOffset: state.backOffset,
@@ -351,6 +367,25 @@ function frame(now) {
       state.curve = motion.to.curve;
       state.tilt = motion.to.tilt;
       state.transition = null;
+    }
+  }
+
+  // 原生双轨换位时序：小轨下沉 600ms；260ms 后开始换位/反转弧向；再从下方归位。
+  if (state.trackMotion) {
+    const motion = state.trackMotion;
+    const elapsed = now - motion.started;
+    const down = smoothStep5(clamp(elapsed / 600, 0, 1));
+    const swap = smoothStep5(clamp((elapsed - 260) / 600, 0, 1));
+    const rise = smoothStep5(clamp((elapsed - 860) / 600, 0, 1));
+    const hiddenY = state.layout.vh + state.layout.cardH * 2;
+    state.smallTrackY = hiddenY * (down * (1 - rise));
+    state.trackShift = motion.from + (motion.to - motion.from) * swap;
+    state.arcDirection = motion.directionFrom + (motion.directionTo - motion.directionFrom) * swap;
+    if (elapsed >= 1460) {
+      state.trackShift = motion.to;
+      state.arcDirection = motion.directionTo;
+      state.smallTrackY = 0;
+      state.trackMotion = null;
     }
   }
 
