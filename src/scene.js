@@ -9,6 +9,7 @@
  */
 import { CARD_CONTENTS, CAMERA_DP } from './data.js';
 import { cardGeometry, clamp } from './layout.js';
+import { GlassRefraction } from './glass.js';
 
 export class Scene {
   constructor(stage) {
@@ -17,6 +18,7 @@ export class Scene {
     this.railFront = stage.querySelector('#railFront');
     this.flips = new Map();
     this.cards = [];
+    this.glass = new GlassRefraction(stage);
 
     // 整组倾斜层：两条轨道一起旋转，背景幽灵字不参与
     this.layer = document.createElement('div');
@@ -125,6 +127,9 @@ export class Scene {
     el.dataset.side = side;
     el.dataset.row = String(row);
     el.innerHTML = this.cardMarkup(card, side);
+    if (side === 'back') {
+      el.querySelectorAll('.face.porcelain,.face.porcelain-back').forEach((face) => this.glass.attach(face));
+    }
     return { el, index, side, copy, row, card, flipKey: `${side}:${copy}:${index}` };
   }
 
