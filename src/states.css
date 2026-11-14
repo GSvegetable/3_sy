@@ -1,0 +1,118 @@
+/* ============================================================
+   三个状态的小点 + 底部「倾斜」滑条
+   ============================================================ */
+
+.status {
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 40px);
+}
+
+.state-dots {
+  position: absolute;
+  left: 50%;
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 38px);
+  transform: translateX(-50%);
+  z-index: 36;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.state-dot {
+  position: relative;
+  width: 5px;
+  height: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.32);
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: width 0.28s ease, height 0.28s ease, background 0.28s ease;
+}
+
+/* 放大点击区域 */
+.state-dot::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+
+.state-dot.active {
+  width: 7px;
+  height: 7px;
+  background: #fff;
+}
+
+.tilt-bar {
+  position: absolute;
+  left: max(16px, 3vw);
+  right: max(16px, 3vw);
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 36;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.tilt-label {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.tilt-value {
+  flex: none;
+  min-width: 3.2ch;
+  text-align: right;
+  font-size: 11px;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+.tilt-range {
+  --pct: 82%;
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none;
+}
+
+.tilt-range::-webkit-slider-runnable-track {
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #7ab9d7 var(--pct), #34383b var(--pct));
+}
+
+.tilt-range::-moz-range-track {
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(90deg, #7ab9d7 var(--pct), #34383b var(--pct));
+}
+
+.tilt-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 3px;
+  height: 26px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 2px;
+  background: #cfeaf6;
+}
+
+.tilt-range::-moz-range-thumb {
+  width: 3px;
+  height: 26px;
+  border: 0;
+  border-radius: 2px;
+  background: #cfeaf6;
+}

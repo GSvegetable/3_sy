@@ -1,9 +1,9 @@
 /**
  * 场景层：负责轨道 DOM 的构建、卡片几何的应用，以及预设切换时的波纹转场。
  *
- * 双轨结构与原生一致：
- *   后轨（左）= 青瓷卡面，不支持翻面，有限滚动 + 越界回弹；
- *   前轨（右）= 白色卡面，点击翻面，循环滚动。
+ * 双轨结构（按参考视频）：
+ *   前轨（左）= 白色卡面，偶数序号卡片，循环滚动，点击翻面，压在上层；
+ *   后轨（右）= 青瓷卡面，奇数序号卡片，循环滚动，不翻面，被前轨压住一部分。
  */
 import { CARD_CONTENTS } from './data.js';
 import { cardGeometry, clamp } from './layout.js';
@@ -22,29 +22,47 @@ export class Scene {
     this.ripple = null;
   }
 
+  /** 两条轨道的左边界：前轨在左，后轨叠在右侧（gap 为负，两轨交叠）。 */
+  railLefts(layout = this.layout) {
+    return {
+      front: layout.padLeft,
+      back: layout.padLeft + layout.cardW + layout.gap,
+    };
+  }
+
   /** 依据视口更新轨道容器的尺寸与位置。 */
   setLayout(layout) {
     this.layout = layout;
-    const { cardW, cardH, padLeft } = layout;
+    const { cardW, cardH } = layout;
+    const lefts = this.railLefts(layout);
     const place = (el, left) => {
       el.style.left = `${left}px`;
       el.style.width = `${cardW}px`;
       el.style.height = `${layout.vh}px`;
     };
-    place(this.railBack, padLeft);
-    place(this.railFront, padLeft + cardW + layout.gap);
+    place(this.railFront, lefts.front);
+    place(this.railBack, lefts.back);
     this.stage.style.setProperty('--card-w', `${cardW}px`);
     this.stage.style.setProperty('--card-h', `${cardH}px`);
     this.stage.style.setProperty('--card-radius', `${12 * layout.u}px`);
   }
 
+  /** 循环轨道需要的副本数：副本总高度要盖住整个视口。 */
+  copiesFor(count) {
+    if (!this.layout) return 3;
+    const height = Math.max(1, count * this.layout.step);
+    return Math.ceil(this.layout.vh / height) + 1;
+  }
+
   /**
    * 依据两条轨道的卡片顺序重建卡片元素。
-   * 顺序变化（长按抽卡）后调用，翻面状态按卡片序号保留。
+   * 顺序变化（长按抽卡）或视口高度变化后调用，翻面状态按卡片序号保留。
    */
   syncOrders(backOrder, frontOrder) {
-    const backKey = backOrder.join(',');
-    const frontKey = frontOrder.join(',');
+    const copiesBack = this.copiesFor(backOrder.length);
+    const copiesFront = this.copiesFor(frontOrder.length);
+    const backKey = `${backOrder.join(',')}|${copiesBack}`;
+    const frontKey = `${frontOrder.join(',')}|${copiesFront}`;
     if (backKey === this.backKey && frontKey === this.frontKey) return;
     this.backKey = backKey;
     this.frontKey = frontKey;
@@ -53,21 +71,18 @@ export class Scene {
     this.railFront.innerHTML = '';
     this.cards = [];
 
-    backOrder.forEach((index, row) => {
-      const rec = this.createCard(index, 'back', 0, row);
-      this.railBack.appendChild(rec.el);
-      this.cards.push(rec);
-    });
-
-    // 前轨需要多份副本才能循环滚动
-    const copies = this.layout ? this.layout.copies : 3;
-    for (let copy = -copies; copy <= copies; copy += 1) {
-      frontOrder.forEach((index, row) => {
-        const rec = this.createCard(index, 'front', copy, row);
-        this.railFront.appendChild(rec.el);
-        this.cards.push(rec);
-      });
-    }
+    // 两条轨道都循环滚动，各自铺满副本
+    const build = (order, side, rail, copies) => {
+      for (let copy = -copies; copy <= copies; copy += 1) {
+        order.forEach((index, row) => {
+          const rec = this.createCard(index, side, copy, row);
+          rail.appendChild(rec.el);
+          this.cards.push(rec);
+        });
+      }
+    };
+    build(backOrder, 'back', this.railBack, copiesBack);
+    build(frontOrder, 'front', this.railFront, copiesFront);
   }
 
   createCard(index, side, copy, row) {
@@ -190,6 +205,8 @@ export class Scene {
 
     const backHeight = Math.max(1, view.backOrder.length * layout.step);
     const frontHeight = Math.max(1, view.frontOrder.length * layout.step);
+    const backWrapped = ((view.backOffset % backHeight) + backHeight) % backHeight;
+    const frontWrapped = ((view.frontOffset % frontHeight) + frontHeight) % frontHeight;
     const backShift = view.backShift || 0;
     const frontShift = view.frontShift || 0;
 
@@ -198,8 +215,7 @@ export class Scene {
     this.railFront.style.transform = `translate3d(${frontShift}px, 0, 0) rotateY(${view.frontTilt}deg)`;
 
     const rippleState = this.rippleState();
-    const railLeft = layout.padLeft;
-    const frontLeft = layout.padLeft + layout.cardW + layout.gap;
+    const lefts = this.railLefts(layout);
 
     for (const rec of this.cards) {
       const isBack = rec.side === 'back';
@@ -211,13 +227,9 @@ export class Scene {
         continue;
       }
 
-      let baseY;
-      if (isBack) {
-        baseY = row * layout.step - view.backOffset;
-      } else {
-        const wrapped = ((view.frontOffset % frontHeight) + frontHeight) % frontHeight;
-        baseY = row * layout.step - wrapped + rec.copy * frontHeight;
-      }
+      const height = isBack ? backHeight : frontHeight;
+      const wrapped = isBack ? backWrapped : frontWrapped;
+      const baseY = row * layout.step - wrapped + rec.copy * height;
 
       const g = cardGeometry(layout, {
         baseY,
@@ -253,13 +265,16 @@ export class Scene {
 
       const x = g.dx;
       const y = g.y - lift - highlight * 8 * layout.u;
-      // 记录屏幕中心，供命中判定使用（卡片被弧线推开时基准坐标不再准确）
-      rec.sx = (isBack ? railLeft : frontLeft) + x + layout.cardW / 2;
-      rec.sy = y + layout.cardH / 2;
+      // 记录屏幕中心，供命中判定使用：要计入轨道整体位移，
+      // 且卡片被弧线推开后基准坐标不再准确。
+      const originX = (isBack ? lefts.back + backShift : lefts.front + frontShift) + x + layout.cardW / 2;
+      const originY = y + layout.cardH / 2;
+      rec.sx = originX;
+      rec.sy = originY;
       const scale = g.scale * (1 + elev * 0.12) * pressScale * (isBack ? 1.04 : 1);
 
       el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
-      el.style.opacity = String(g.alpha * (highlight ? 1 : 1));
+      el.style.opacity = String(g.alpha);
       el.style.zIndex = String(Math.round(baseZ(rec, g.smooth) + elev * 100 + highlight * 1000));
 
       const inner = el.firstElementChild;
@@ -270,8 +285,6 @@ export class Scene {
 
       // 波纹：光带扫过卡片时，靠近波前的部分提亮
       if (rippleState) {
-        const originX = (isBack ? railLeft : frontLeft) + x + layout.cardW / 2;
-        const originY = y + layout.cardH / 2;
         const dist = Math.hypot(originX - rippleState.cx, originY - rippleState.cy);
         const band = Math.exp(-(((dist - rippleState.radius) / (70 * layout.u)) ** 2));
         const glow = band * rippleState.strength;
@@ -295,7 +308,7 @@ export class Scene {
   }
 
   /**
-   * 按实际渲染位置判断指针落在哪条轨道：0 = 后轨，1 = 前轨，-1 = 都不在。
+   * 按实际渲染位置判断指针落在哪条轨道：0 = 后轨（右），1 = 前轨（左），-1 = 都不在。
    */
   pickSide(clientX) {
     let back = Infinity;
@@ -335,10 +348,7 @@ export class Scene {
   }
 }
 
-/** 层级：轨道内按距离焦点的远近排序，副本越靠前越靠下。 */
+/** 层级：轨道内按距离焦点的远近排序，上方的卡片压住下方的卡片，副本越靠前越靠下。 */
 function baseZ(rec, smooth) {
-  if (rec.side === 'back') {
-    return 10000 + (100 - rec.row) * 100 + smooth * 20;
-  }
-  return (-rec.copy) * 1000 + (100 - rec.row) * 100 + smooth * 20;
+  return -rec.copy * 1000 + (100 - rec.row) * 100 + smooth * 20;
 }
