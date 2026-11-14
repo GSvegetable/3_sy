@@ -48,6 +48,7 @@
   position: absolute;
   isolation: isolate;
   overflow: hidden;
+  border-radius: calc(var(--card-radius, 12px) * 1.5);
   border: 1px solid rgba(232, 255, 252, 0.52);
   background:
     radial-gradient(115% 85% at 8% 0%, rgba(255, 255, 255, 0.54) 0%, rgba(232, 255, 252, 0.20) 24%, transparent 58%),
