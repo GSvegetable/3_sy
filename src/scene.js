@@ -31,9 +31,11 @@ export class Scene {
 
   /** 两条轨道的左边界：后轨（青瓷）在左，前轨（白）叠在右侧（gap 为负，两轨交叠）。 */
   railLefts(layout = this.layout) {
+    const shift = this.viewTrackShift || 0;
+    const spacing = layout.cardW + layout.gap;
     return {
-      back: layout.padLeft,
-      front: layout.padLeft + layout.cardW + layout.gap,
+      back: layout.padLeft + spacing * shift,
+      front: layout.padLeft + spacing * (1 - shift),
     };
   }
 
@@ -229,15 +231,18 @@ export class Scene {
     const frontShift = view.frontShift || 0;
 
     // 轨道整体位移（peak）；倾角作用在整层上
+    this.viewTrackShift = clamp(view.trackShift || 0, 0, 1);
+    const lefts = this.railLefts(layout);
+    this.railBack.style.left = `${lefts.back}px`;
+    this.railFront.style.left = `${lefts.front}px`;
     this.railBack.style.transform = `translate3d(${backShift}px, 0, 0)`;
-    this.railFront.style.transform = `translate3d(${frontShift}px, 0, 0)`;
+    this.railFront.style.transform = `translate3d(${frontShift}px, ${view.smallTrackY || 0}px, 0)`;
     this.layer.style.transformOrigin = `${(view.tiltOriginX * 100).toFixed(2)}% 50%`;
     this.layer.style.transform = view.tiltDeg
       ? `perspective(${CAMERA_DP * layout.u}px) rotateY(${view.tiltDeg}deg)`
       : 'none';
 
     const rippleState = this.rippleState();
-    const lefts = this.railLefts(layout);
 
     for (const rec of this.cards) {
       const isBack = rec.side === 'back';
@@ -258,7 +263,7 @@ export class Scene {
         curve: view.curve,
         peak: isBack ? backShift : frontShift,
         // 两条轨道同向弯曲，保持恒定叠压关系（与原生单弧心一致）
-        arcDir: 1,
+        arcDir: view.arcDirection || 1,
         speed: isBack ? view.backSpeed : view.frontSpeed,
         pointerY: isBack ? view.backPointerY : view.frontPointerY,
       });
@@ -290,13 +295,14 @@ export class Scene {
       const y = g.y - lift - highlight * 8 * layout.u;
       // 记录屏幕中心，供命中判定使用：要计入轨道整体位移，
       // 且卡片被弧线推开后基准坐标不再准确。
+      const trackY = !isBack ? (view.smallTrackY || 0) : 0;
       const originX = (isBack ? lefts.back + backShift : lefts.front + frontShift) + x + layout.cardW / 2;
-      const originY = y + layout.cardH / 2;
+      const originY = y + trackY + layout.cardH / 2;
       rec.sx = this.projectX(originX, view);
       rec.sy = originY;
       const scale = g.scale * (1 + elev * 0.12) * pressScale * (isBack ? 1.06 : 0.96);
 
-      el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+      el.style.transform = `translate3d(${x}px, ${y + trackY}px, 0) scale(${scale})`;
       el.style.opacity = String(g.alpha);
       el.style.zIndex = String(Math.round(baseZ(rec, g.smooth) + elev * 100 + highlight * 1000));
 
