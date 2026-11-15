@@ -7,11 +7,11 @@
   color-scheme: dark;
   --ink: #001028;
   --steel: #5a82ae;
-  /* 双轨实心配色：暖米白 + 冷青灰，对比协调、不刺眼 */
-  --rail-front-bg: #faf8f5;   /* 前轨：暖米白 */
-  --rail-front-edge: #e8e4dd;
-  --rail-back-bg: #2a3a42;    /* 后轨：深青灰 */
-  --rail-back-edge: #1e2a30;
+  /* 双轨实心配色：低饱和度暖石 + 冷石，对比柔和、不刺眼 */
+  --rail-front-bg: #f3f0ec;   /* 前轨：暖石白 */
+  --rail-front-edge: #e8e1d6;
+  --rail-back-bg: #232e36;    /* 后轨：冷石灰 */
+  --rail-back-edge: #181e24;
   --ghost: rgba(255, 255, 255, 0.085);
   --hair: rgba(255, 255, 255, 0.14);
 }
@@ -246,8 +246,8 @@ body {
   position: absolute;
   left: 0;
   right: 0;
-  height: 26%;
-  z-index: 20;
+  height: 22%;
+  z-index: -1;
   pointer-events: none;
 }
 

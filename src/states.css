@@ -4,24 +4,24 @@
 .rail-back{z-index:3}
 .rail-front{z-index:2}
 
-/* 大轨道：深钴蓝。 */
+/* 大轨道：冷石灰（低饱和度）。 */
 .face.porcelain,.face.porcelain-back{
  position:absolute;
  overflow:hidden;
  border:0;
  border-radius:calc(var(--card-radius,12px)*1.5);
- background:#3157D5;
+ background:#232e36;
  box-shadow:none;
  -webkit-backdrop-filter:none;
  backdrop-filter:none;
-}
-.face.porcelain-back{background:#3157D5}
+ }
+.face.porcelain-back{background:#232e36}
 
-/* 小轨道：珊瑚橙。 */
+/* 小轨道：暖石白（低饱和度）。 */
 .face.front:not(.porcelain),.face.back:not(.porcelain-back){
- background:#FF7058;
+ background:#f3f0ec;
  box-shadow:none;
-}
+ }
 .face.front .cast,.face.back .cast,
 .face.porcelain .cast,.face.porcelain-back .cast{display:none}
 .face.porcelain::before,.face.porcelain::after,
@@ -38,14 +38,14 @@
  letter-spacing:.22em;
  color:#FFFFFF;
  text-shadow:none;
-}
+ }
 .face.porcelain .copy{left:10.7%;right:8%;bottom:9.1%}
 .face.porcelain .copy h2{
  font-size:calc(var(--card-w,150px)*.147);
  letter-spacing:-.03em;
  color:#FFFFFF;
  text-shadow:none;
-}
+ }
 .face.porcelain .copy p{
  font-family:"Noto Sans SC",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
  font-style:normal;
@@ -54,7 +54,7 @@
  letter-spacing:.04em;
  color:rgba(255,255,255,.88);
  text-shadow:none;
-}
+ }
 .face.porcelain-back .back-mark{color:rgba(255,255,255,.22);text-shadow:none}
 
 .face.front:not(.porcelain) .eyebrow{color:rgba(25,35,55,.58);text-shadow:none}
