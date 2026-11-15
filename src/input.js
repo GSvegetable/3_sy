@@ -1,4 +1,4 @@
-/** 手势：轨道纵向滚动、横向切换预设、点击卡片翻面。 */
+/** 手势：轨道纵向滚动、横向切换预设（跟手）、点击卡片翻面。 */
 const SWIPE_DISTANCE_RATIO = 0.10;
 
 export function attachGestures(stage, handlers) {
@@ -10,6 +10,7 @@ export function attachGestures(stage, handlers) {
   const finishCancelled = (pointerId) => {
     if (!gesture || gesture.id !== pointerId) return;
     if (gesture.dragging) handlers.onDragEnd(gesture.side);
+    if (gesture.swiping) handlers.onSwipeCancel?.();
     gesture = null;
   };
 
@@ -28,6 +29,7 @@ export function attachGestures(stage, handlers) {
       lastY: event.clientY,
       lastTime: performance.now(),
       dragging: false,
+      swiping: false,
       card: event.target.closest?.('.card:not(.free)') || null,
     };
 
@@ -45,7 +47,13 @@ export function attachGestures(stage, handlers) {
     const dx = event.clientX - gesture.startX;
     const dy = event.clientY - gesture.startY;
 
-    if (Math.abs(dx) > touchSlop() && Math.abs(dx) > Math.abs(dy) * 1.25) {
+    // 横向滑动：进入后一直保持横滑模式，状态跟着手指走（松手再决定是否切换）。
+    if (
+      !gesture.dragging &&
+      (gesture.swiping || (Math.abs(dx) > touchSlop() && Math.abs(dx) > Math.abs(dy) * 1.25))
+    ) {
+      gesture.swiping = true;
+      handlers.onSwipeMove?.(dx);
       event.preventDefault();
       return;
     }
@@ -90,6 +98,9 @@ export function attachGestures(stage, handlers) {
       handlers.onDragEnd(gesture.side);
     } else if (swipe) {
       handlers.onPresetStep(dx > 0 ? 1 : -1);
+    } else if (gesture.swiping) {
+      // 没滑够距离：状态弹回原位。
+      handlers.onSwipeCancel?.();
     } else if (gesture.card && Math.hypot(dx, dy) <= touchSlop() * 1.4) {
       handlers.onTap(
         Number(gesture.card.dataset.i),
