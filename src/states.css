@@ -74,3 +74,35 @@
 .face.front:not(.porcelain) .copy {
   left: 22%;
 }
+
+/* ============================================================
+   修复「文字随机消失 / 被斜切」（根因：跨卡片共享同一个 3D 渲染上下文）
+
+   原来 .rail 和 .card 都是 transform-style: preserve-3d，
+   所有卡片（以及左右两条轨道上的卡片）被放进同一个 3D 场景里，
+   浏览器改按「空间深度」而不是 z-index 来排序。
+   而每张卡的 .inner 又带着 rotateY(-8deg) / rotateX(翻面角)，
+   相邻卡片的平面互相穿插 → 渲染器把它们切成碎片：
+   有的标题被邻居的底色盖住，有的被对角线切掉一半。
+   滑动、切换三个状态时角度/位置在变，穿插关系也跟着变，所以表现为不固定。
+
+   解决：只让每张卡自己的 .inner 保留 3D（翻面需要），
+   轨道和卡片本身压平，卡片之间回到普通的 z-index 叠放。
+   ============================================================ */
+.stage .rail,
+.stage .card {
+  transform-style: flat;
+  -webkit-transform-style: flat;
+}
+
+/* 每张卡一个独立的叠放/绘制上下文，互不影响 */
+.stage .card {
+  isolation: isolate;
+  contain: layout style;
+}
+
+/* 文字抗锯齿统一，缩放中的边缘更稳 */
+.stage .card .face {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
