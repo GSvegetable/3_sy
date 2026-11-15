@@ -156,21 +156,35 @@ export class Scene {
     return state.target === 180;
   }
 
-  /** 推进所有翻面弹簧。 */
+  /**
+   * 推进所有翻面弹簧。
+   * 动作分三段，像真的拿起一张卡再翻过来：
+   *   翻上去：先抬起（elev 先涨），抬到约 1/3 高度再开始转；
+   *   翻回去：先转回正面，转到接近 0 才慢慢放下（elev 最后落）。
+   * 这样旋转期间卡片始终悬在其他卡片上方，不会和相邻卡片互相穿插。
+   */
   stepFlips(dtScale) {
     for (const state of this.flips.values()) {
       const fs = Math.max(0.1, dtScale);
-      state.velocity = (state.velocity + (state.target - state.angle) * 0.035 * fs) * Math.pow(0.82, fs);
+      const goingUp = state.target === 180;
+
+      const elevTarget = goingUp || state.angle > 12 ? 1 : 0;
+      const angleTarget = goingUp ? (state.elev > 0.35 ? 180 : 0) : 0;
+
+      // 角度：略带阻尼回弹（约 5% 过冲），像卡片落定时的一点点颤动
+      state.velocity = (state.velocity + (angleTarget - state.angle) * 0.025 * fs) * Math.pow(0.78, fs);
       state.angle += state.velocity * fs;
-      state.elevVelocity =
-        (state.elevVelocity + (state.target / 180 - state.elev) * 0.055 * fs) * Math.pow(0.78, fs);
+
+      // 抬升：比旋转更快，保证先离开卡堆
+      state.elevVelocity = (state.elevVelocity + (elevTarget - state.elev) * 0.08 * fs) * Math.pow(0.7, fs);
       state.elev = clamp(state.elev + state.elevVelocity * fs, 0, 1);
-      if (Math.abs(state.target - state.angle) < 0.08 && Math.abs(state.velocity) < 0.08) {
-        state.angle = state.target;
+
+      if (Math.abs(angleTarget - state.angle) < 0.08 && Math.abs(state.velocity) < 0.08) {
+        state.angle = angleTarget;
         state.velocity = 0;
       }
-      if (Math.abs(state.target / 180 - state.elev) < 0.001 && Math.abs(state.elevVelocity) < 0.001) {
-        state.elev = state.target / 180;
+      if (Math.abs(elevTarget - state.elev) < 0.001 && Math.abs(state.elevVelocity) < 0.001) {
+        state.elev = elevTarget;
         state.elevVelocity = 0;
       }
     }
@@ -205,6 +219,9 @@ export class Scene {
       ? `perspective(${CAMERA_DP * layout.u}px) rotateY(${view.tiltDeg}deg)`
       : 'none';
 
+    // 本帧是否有卡片正在翻面 / 悬空：有的话整条轨道要升到上面，翻起来的卡才不会被另一条轨道压住。
+    let backActive = false;
+    let frontActive = false;
 
     for (const rec of this.cards) {
       const isBack = rec.side === 'back';
@@ -246,8 +263,14 @@ export class Scene {
       const state = this.flipState(rec.flipKey);
       const angle = state.angle;
       const elev = state.elev;
-      const arch = Math.sin(clamp(angle / 180, 0, 1) * Math.PI) * 12 * layout.u;
+      const flipPhase = Math.sin(clamp(angle / 180, 0, 1) * Math.PI);
+      const arch = flipPhase * 12 * layout.u;
       const lift = elev * 26 * layout.u + arch;
+      const active = elev > 0.01 || angle > 0.5;
+      if (active) {
+        if (isBack) backActive = true;
+        else frontActive = true;
+      }
       const highlight =
         view.highlightIndex === rec.index && performance.now() < view.highlightUntil ? 1 : 0;
 
@@ -268,16 +291,42 @@ export class Scene {
         el.style.setProperty('--card-alpha', cardAlpha);
         rec.alpha = cardAlpha;
       }
-      el.style.zIndex = String(Math.round(baseZ(rec, g.smooth) + elev * 100 + highlight * 1000));
+      // 悬空/翻转中的卡片整体抬到本轨道最上层（+50000 远大于相邻卡片的层级间距），
+      // 不再被上方那张卡片盖住或"穿"过去。
+      el.style.zIndex = String(
+        Math.round(baseZ(rec, g.smooth) + (active ? 50000 : 0) + elev * 100 + highlight * 1000),
+      );
+
+      // 悬空程度 → CSS 变量，驱动地面投影（只在数值变化时写入）
+      const liftAmount = Math.round((elev * 0.8 + flipPhase * 0.2) * 100) / 100;
+      if (rec.liftAmount !== liftAmount) {
+        el.style.setProperty('--lift', String(liftAmount));
+        el.classList.toggle('is-lifted', liftAmount > 0.01);
+        rec.liftAmount = liftAmount;
+      }
 
       const inner = el.firstElementChild;
       if (inner) {
-        inner.style.transform = `perspective(${1920 * layout.u}px) rotateY(-8deg) rotateX(${angle}deg)`;
+        // 悬空时透视更近、并沿 Z 轴把卡片真正"拿"向观察者，翻转时再多抬一点。
+        const persp = (1920 - 700 * elev) * layout.u;
+        const zLift = (elev * 36 + flipPhase * 70) * layout.u;
+        inner.style.transform =
+          `perspective(${persp}px) translateZ(${zLift}px) rotateY(-8deg) rotateX(${angle}deg)`;
       }
       el.classList.toggle('is-highlighted', highlight === 1);
-
     }
 
+    // 有卡片悬空的那条轨道整体升到最上面
+    const backZ = backActive ? '5' : '';
+    const frontZ = frontActive ? '4' : '';
+    if (this.railBackZ !== backZ) {
+      this.railBack.style.zIndex = backZ;
+      this.railBackZ = backZ;
+    }
+    if (this.railFrontZ !== frontZ) {
+      this.railFront.style.zIndex = frontZ;
+      this.railFrontZ = frontZ;
+    }
   }
 
   /**
