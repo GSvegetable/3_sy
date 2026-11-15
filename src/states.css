@@ -67,3 +67,10 @@
 
 .card .face{opacity:var(--card-alpha,1)}
 .card.is-reflowing{transition:transform 390ms cubic-bezier(.22,1,.36,1)}
+
+/* 前轨位于后轨右侧，但两轨横向重叠约 30px（含缩放）。
+   将前轨文字整体向右收进可见区域，避免被上层深色卡片盖住首字。 */
+.face.front:not(.porcelain) .eyebrow,
+.face.front:not(.porcelain) .copy {
+  left: 22%;
+}
