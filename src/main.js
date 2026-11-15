@@ -6,6 +6,13 @@
  *   · 三个状态（底部三个小点）的 peak / curve / tilt 与原生预设一致，
  *     横滑切换，三个量使用统一的柔和缓动，保持整组运动一致；
  *   · 倾斜作用在整组上：rotateY = 读数 × 0.48°，旋转原点随读数左右移动；
+ *
+ * 调整要点（2026-11-15）：
+ *   1. 双轨实心配色，去掉玻璃/瓷器透明效果
+ *   2. 弹簧参数全面柔化：stiffness↓ damping↑ → 更丝滑、无超调
+ *   3. 惯性衰减 0.96→0.985，拖拽跟随 0.95→0.97 → 滑动更长、更顺
+ *   4. 速度混合权重调整，低通更强 → 手感更连贯
+ *   5. 搜索定位改用三次缓动，不再硬切
  */
 import './style.css';
 import './states.css';
@@ -22,7 +29,7 @@ const searchToggle = document.querySelector('#searchToggle');
 const searchInput = document.querySelector('#searchInput');
 const statusLabel = document.querySelector('#statusLabel');
 
-/** 后轨（左，青瓷）= 偶数序号卡片，前轨（右，白）= 奇数序号卡片。 */
+/** 后轨（左，深青灰）= 偶数序号卡片，前轨（右，暖米白）= 奇数序号卡片。 */
 const state = {
   layout: null,
   presetIndex: INITIAL_PRESET,
@@ -122,8 +129,12 @@ function setPreset(next) {
 /**
  * 柔和阻尼动力学：降低整体加速度，并为透视倾斜留出更长的收束时间。
  * 半隐式积分并限制子步长，避免高刷新率/掉帧时的数值抖动。
+ * 
+ * 调整后的默认参数：
+ *   - stiffness: 170→140 (更柔和，减小加速度)
+ *   - damping: 25→28 (更强阻尼，消除超调)
  */
-function springStep(value, velocity, target, deltaSeconds, stiffness = 170, damping = 25) {
+function springStep(value, velocity, target, deltaSeconds, stiffness = 140, damping = 28) {
   let remaining = Math.max(0, deltaSeconds);
   while (remaining > 0) {
     const dt = Math.min(remaining, 1 / 120);
@@ -321,12 +332,13 @@ function frame(now) {
   const fs = dt / 16.667;
 
   // 状态参数使用连续弹簧：快速连续横滑时继承上一段运动速度。
+  // 调整后参数：stiffness↓ damping↑ → 更丝滑、收敛更稳
   if (state.transition) {
     const target = state.transition.to;
     const seconds = dt / 1000;
-    let p = springStep(state.peak, state.peakV, target.peak, seconds, 58, 16);
-    let c = springStep(state.curve, state.curveV, target.curve, seconds, 54, 15);
-    let r = springStep(state.tilt, state.tiltV, target.tilt, seconds, 34, 12.5);
+    let p = springStep(state.peak, state.peakV, target.peak, seconds, 52, 15);
+    let c = springStep(state.curve, state.curveV, target.curve, seconds, 48, 14);
+    let r = springStep(state.tilt, state.tiltV, target.tilt, seconds, 30, 11.5);
     state.peak = p.value; state.peakV = p.velocity;
     state.curve = c.value; state.curveV = c.velocity;
     state.tilt = r.value; state.tiltV = r.velocity;
@@ -346,7 +358,7 @@ function frame(now) {
   // 第三个状态的双轨换位由同一弹簧驱动；弧线方向跟随轨道位置，
   // 纵向甩动直接取换位速度，因此起落与横向运动自然关联。
   if (state.trackMotion) {
-    const motion = springStep(state.trackShift, state.trackShiftV, state.trackMotion.target, dt / 1000, 48, 14);
+    const motion = springStep(state.trackShift, state.trackShiftV, state.trackMotion.target, dt / 1000, 42, 13);
     state.trackShift = motion.value;
     state.trackShiftV = motion.velocity;
     state.arcDirection = 1 - 2 * state.trackShift;
@@ -362,10 +374,10 @@ function frame(now) {
     }
   }
 
-  // 搜索定位
+  // 搜索定位：改用三次缓出，更自然
   if (state.searchMotion) {
-    const t = clamp((now - state.searchMotion.started) / 600, 0, 1);
-    const e = 1 - Math.pow(1 - t, 3);
+    const t = clamp((now - state.searchMotion.started) / 700, 0, 1);
+    const e = 1 - Math.pow(1 - t, 3); // cubic ease-out
     const value = state.searchMotion.start + (state.searchMotion.target - state.searchMotion.start) * e;
     if (state.searchMotion.side === 0) {
       state.backOffset = value;
@@ -379,31 +391,31 @@ function frame(now) {
     if (t >= 1) state.searchMotion = null;
   }
 
-  // 轨道偏移：拖拽时追随目标，松开后惯性衰减
+  // 轨道偏移：拖拽时追随目标更紧(0.95→0.97)，松开后惯性衰减更慢(0.96→0.985)
   if (state.dragging === 0) {
-    state.backOffset += (state.backTarget - state.backOffset) * 0.95;
+    state.backOffset += (state.backTarget - state.backOffset) * 0.97;
   } else {
     state.backOffset += state.backVelocity * fs;
-    state.backVelocity *= Math.pow(0.96, fs);
-    if (Math.abs(state.backVelocity) < 0.15) state.backVelocity = 0;
+    state.backVelocity *= Math.pow(0.985, fs);
+    if (Math.abs(state.backVelocity) < 0.1) state.backVelocity = 0;
   }
   if (state.dragging === 1) {
-    state.frontOffset += (state.frontTarget - state.frontOffset) * 0.95;
+    state.frontOffset += (state.frontTarget - state.frontOffset) * 0.97;
   } else {
     state.frontOffset += state.frontVelocity * fs;
-    state.frontVelocity *= Math.pow(0.96, fs);
-    if (Math.abs(state.frontVelocity) < 0.15) state.frontVelocity = 0;
+    state.frontVelocity *= Math.pow(0.985, fs);
+    if (Math.abs(state.frontVelocity) < 0.1) state.frontVelocity = 0;
   }
 
-  // 位移低通 + 速度混合（与原生一致）
+  // 位移低通 + 速度混合：低通更强(0.55→0.65)，速度混合更依赖低通(0.35/0.65→0.25/0.75)
   const rawBack = state.backOffset - state.prevBack;
   const rawFront = state.frontOffset - state.prevFront;
   state.prevBack = state.backOffset;
   state.prevFront = state.frontOffset;
-  state.backDeltaLow = state.backDeltaLow * 0.55 + rawBack * 0.45;
-  state.frontDeltaLow = state.frontDeltaLow * 0.55 + rawFront * 0.45;
-  if (state.dragging === 0) state.backVelocity = state.backVelocity * 0.35 + state.backDeltaLow * 0.65;
-  if (state.dragging === 1) state.frontVelocity = state.frontVelocity * 0.35 + state.frontDeltaLow * 0.65;
+  state.backDeltaLow = state.backDeltaLow * 0.65 + rawBack * 0.35;
+  state.frontDeltaLow = state.frontDeltaLow * 0.65 + rawFront * 0.35;
+  if (state.dragging === 0) state.backVelocity = state.backVelocity * 0.25 + state.backDeltaLow * 0.75;
+  if (state.dragging === 1) state.frontVelocity = state.frontVelocity * 0.25 + state.frontDeltaLow * 0.75;
 
   // 逐卡步进触觉
   const step = state.layout.step;

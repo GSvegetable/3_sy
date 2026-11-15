@@ -1,16 +1,17 @@
 /* ============================================================
    3_sy — 双轨卡片空间
-   视觉语言：纯黑底 + 巨幅幽灵排版 + 瓷白卡片 + 钢蓝斜体副标
+   视觉语言：纯黑底 + 巨幅幽灵排版 + 双轨实心配色 + 钢蓝斜体副标
    ============================================================ */
 
 :root {
   color-scheme: dark;
   --ink: #001028;
   --steel: #5a82ae;
-  --paper-top: #fdfefe;
-  --paper-mid: #f4f9fc;
-  --paper-bottom: #e3ecf5;
-  --celadon: #6e9fa3;
+  /* 双轨实心配色：暖米白 + 冷青灰，对比协调、不刺眼 */
+  --rail-front-bg: #faf8f5;   /* 前轨：暖米白 */
+  --rail-front-edge: #e8e4dd;
+  --rail-back-bg: #2a3a42;    /* 后轨：深青灰 */
+  --rail-back-edge: #1e2a30;
   --ghost: rgba(255, 255, 255, 0.085);
   --hair: rgba(255, 255, 255, 0.14);
 }
@@ -115,24 +116,45 @@ body {
   -webkit-backface-visibility: hidden;
 }
 
+/* 前轨（右，奇数）：暖米白实心 */
 .face.front {
-  background: linear-gradient(176deg, var(--paper-top) 0%, var(--paper-mid) 48%, var(--paper-bottom) 100%);
+  background: linear-gradient(180deg, var(--rail-front-bg) 0%, var(--rail-front-edge) 100%);
   box-shadow:
-    0 26px 52px -20px rgba(0, 0, 0, 0.62),
-    0 3px 8px rgba(0, 0, 0, 0.28),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.92),
-    inset 0 -22px 40px -26px rgba(24, 54, 84, 0.42);
+    0 22px 44px -18px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.6),
+    inset 0 -16px 28px -20px rgba(0, 0, 0, 0.15);
 }
 
+/* 后轨（左，偶数）：深青灰实心 */
 .face.back {
   transform: rotateX(180deg);
-  background:
-    repeating-linear-gradient(0deg, rgba(30, 60, 90, 0.045) 0 1px, transparent 1px 15px),
-    repeating-linear-gradient(90deg, rgba(30, 60, 90, 0.045) 0 1px, transparent 1px 15px),
-    linear-gradient(176deg, #f1f6fa 0%, #dee7f0 100%);
+  background: linear-gradient(180deg, var(--rail-back-bg) 0%, var(--rail-back-edge) 100%);
   box-shadow:
-    0 26px 52px -20px rgba(0, 0, 0, 0.62),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+    0 22px 44px -18px rgba(0, 0, 0, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* 瓷器/玻璃效果类 —— 彻底移除 backdrop-filter 和光效渐变，改为实心配色 */
+.face.porcelain {
+  background: linear-gradient(180deg, var(--rail-back-bg) 0%, var(--rail-back-edge) 100%);
+  box-shadow:
+    0 22px 44px -18px rgba(0, 0, 0, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.face.porcelain-back {
+  background: linear-gradient(180deg, var(--rail-back-bg) 0%, var(--rail-back-edge) 100%);
+  box-shadow:
+    0 22px 44px -18px rgba(0, 0, 0, 0.65),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+/* 去掉原瓷器类的伪元素光效 */
+.face.porcelain::before,
+.face.porcelain-back::before,
+.face.porcelain::after,
+.face.porcelain-back::after {
+  display: none !important;
 }
 
 .cast {
@@ -140,28 +162,28 @@ body {
   left: 0;
   right: 0;
   top: 0;
-  height: 48%;
+  height: 40%;
   pointer-events: none;
-  background: linear-gradient(180deg, rgba(18, 38, 58, 0.17) 0%, rgba(18, 38, 58, 0.05) 48%, transparent 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.12) 33%, rgba(0, 0, 0, 0.04) 66%, transparent);
 }
 
 .eyebrow {
   position: absolute;
-  left: 6.4%;
-  top: 10.6%;
+  left: 12%;
+  top: 12.1%;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: calc(var(--card-w, 150px) * 0.058);
+  font-size: calc(var(--card-w, 150px) * 0.06);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.18em;
-  color: rgba(10, 28, 48, 0.4);
+  color: rgba(0, 0, 0, 0.42);
 }
 
 .copy {
   position: absolute;
-  left: 6.4%;
+  left: 12%;
   right: 8%;
-  bottom: 10.6%;
+  bottom: 12.1%;
 }
 
 .copy h2 {
@@ -170,25 +192,28 @@ body {
   font-size: calc(var(--card-w, 150px) * 0.173);
   line-height: 1.08;
   font-weight: 900;
-  letter-spacing: -0.02em;
-  color: var(--ink);
+  letter-spacing: -0.03em;
+  color: #0a0a0a;
   white-space: nowrap;
 }
 
 .copy p {
   margin: 0;
-  font-family: "Noto Serif SC", Georgia, "Times New Roman", serif;
-  font-size: calc(var(--card-w, 150px) * 0.072);
-  font-style: italic;
+  font-family: "Noto Sans SC", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+  font-size: calc(var(--card-w, 150px) * 0.06);
   line-height: 1.2;
-  letter-spacing: 0.01em;
-  color: var(--steel);
+  letter-spacing: 0.08em;
+  color: rgba(0, 0, 0, 0.52);
   white-space: nowrap;
 }
 
-.face.porcelain .copy h2 { color: rgba(255,255,255,.94); }
-.face.porcelain .copy p  { color: rgba(255,255,255,.72); }
-.face.porcelain .eyebrow { color: rgba(255,255,255,.68); }
+/* 后轨文字颜色适配深色底 */
+.face.porcelain .copy h2,
+.face.porcelain-back .back-mark { color: #fffffff0; }
+.face.porcelain .copy p { color: #ffffffb8; }
+.face.porcelain .eyebrow { color: #ffffffad; }
 .face.porcelain .cast { display: none; }
 
 .back-mark {
@@ -205,7 +230,7 @@ body {
   color: rgba(10, 28, 48, 0.07);
 }
 
-/* 搜索命中 */
+/* 搜索命中高亮 */
 .card.is-highlighted .face {
   box-shadow:
     0 26px 52px -20px rgba(0, 0, 0, 0.62),
@@ -315,3 +340,12 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .search-input { transition: opacity 0.12s ease; }
 }
+
+/* ------------------------------------------------------------ 倾斜层层级修正 */
+
+.stage { perspective: none; }
+.tilt-layer { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.rail-back { z-index: 3; }
+.rail-front { z-index: 2; }
+.card .face { opacity: var(--card-alpha, 1); }
+.card.is-reflowing { transition: transform 0.39s cubic-bezier(0.22, 1, 0.36, 1); }
