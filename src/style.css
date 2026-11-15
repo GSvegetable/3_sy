@@ -110,7 +110,7 @@ body {
 .face {
   position: absolute;
   inset: 0;
-  overflow: hidden;
+  /* overflow: hidden;  移除：3D 翻面时会裁切文字 */
   border-radius: var(--card-radius, 12px);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -157,15 +157,8 @@ body {
   display: none !important;
 }
 
-.cast {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 40%;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.12) 33%, rgba(0, 0, 0, 0.04) 66%, transparent);
-}
+/* .cast 渐变层彻底移除：它遮挡卡片顶部 40% 文字区域 */
+/* .cast { display: none; } */
 
 .eyebrow {
   position: absolute;
@@ -177,6 +170,7 @@ body {
   line-height: 1;
   letter-spacing: 0.18em;
   color: rgba(0, 0, 0, 0.42);
+  z-index: 10;
 }
 
 .copy {
@@ -184,6 +178,7 @@ body {
   left: 12%;
   right: 8%;
   bottom: 12.1%;
+  z-index: 10;
 }
 
 .copy h2 {
@@ -209,12 +204,17 @@ body {
   white-space: nowrap;
 }
 
-/* 后轨文字颜色适配深色底 */
+/* 后轨文字颜色适配深色底 + 统一提升文字层级 */
 .face.porcelain .copy h2,
 .face.porcelain-back .back-mark { color: #fffffff0; }
 .face.porcelain .copy p { color: #ffffffb8; }
 .face.porcelain .eyebrow { color: #ffffffad; }
 .face.porcelain .cast { display: none; }
+
+.face.porcelain .eyebrow,
+.face.porcelain .copy,
+.face.front .eyebrow,
+.face.front .copy { z-index: 10; }
 
 .back-mark {
   position: absolute;
@@ -238,28 +238,8 @@ body {
     0 0 26px rgba(90, 170, 200, 0.35);
 }
 
-/* ------------------------------------------------------- 上下黑色渐隐 */
-
-.stage::before,
-.stage::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 22%;
-  z-index: -1;
-  pointer-events: none;
-}
-
-.stage::before {
-  top: 0;
-  background: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.82) 26%, rgba(0, 0, 0, 0.5) 52%, rgba(0, 0, 0, 0.24) 78%, transparent 100%);
-}
-
-.stage::after {
-  bottom: 0;
-  background: linear-gradient(0deg, #000 0%, rgba(0, 0, 0, 0.82) 26%, rgba(0, 0, 0, 0.5) 52%, rgba(0, 0, 0, 0.24) 78%, transparent 100%);
-}
+/* ------------------------------------------------------- 上下黑色渐隐：彻底移除，避免 3D 堆叠上下文遮挡文字 */
+/* .stage::before, .stage::after { display: none; } */
 
 /* ------------------------------------------------------------ 状态字 */
 

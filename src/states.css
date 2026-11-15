@@ -7,7 +7,7 @@
 /* 大轨道：冷石灰（低饱和度）。 */
 .face.porcelain,.face.porcelain-back{
  position:absolute;
- overflow:hidden;
+ /* overflow:hidden; 移除：3D 翻面时会裁切文字 */
  border:0;
  border-radius:calc(var(--card-radius,12px)*1.5);
  background:#232e36;
@@ -29,7 +29,7 @@
 
 /* 纯色卡面使用清晰、高对比度文字。 */
 .face.porcelain>.eyebrow,.face.porcelain>.copy,
-.face.porcelain-back>.back-mark{z-index:2}
+.face.porcelain-back>.back-mark{z-index:10}
 .face.porcelain .eyebrow{
  left:10.7%;
  top:auto;
@@ -57,6 +57,9 @@
  }
 .face.porcelain-back .back-mark{color:rgba(255,255,255,.22);text-shadow:none}
 
+/* 前轨文字也提升层级，防止被遮挡 */
+.face.front:not(.porcelain) .eyebrow,
+.face.front:not(.porcelain) .copy { z-index: 10; }
 .face.front:not(.porcelain) .eyebrow{color:rgba(25,35,55,.58);text-shadow:none}
 .face.front:not(.porcelain) .copy h2{color:#18243D;text-shadow:none}
 .face.front:not(.porcelain) .copy p{color:rgba(24,36,61,.72);text-shadow:none}
