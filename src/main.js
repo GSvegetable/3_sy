@@ -13,6 +13,8 @@
  *   3. 惯性衰减 0.96→0.985，拖拽跟随 0.95→0.97 → 滑动更长、更顺
  *   4. 速度混合权重调整，低通更强 → 手感更连贯
  *   5. 搜索定位改用三次缓动，不再硬切
+ *   6. 状态切换：peak / curve / tilt / 换轨共用同一组弹簧参数（临界阻尼，同时到位）；
+ *      横滑时状态跟手（scrub），松手后按距离/速度决定切换或弹回
  */
 import './style.css';
 import './states.css';
@@ -29,11 +31,23 @@ const searchToggle = document.querySelector('#searchToggle');
 const searchInput = document.querySelector('#searchInput');
 const statusLabel = document.querySelector('#statusLabel');
 
+/**
+ * 状态切换弹簧：四个量（peak / curve / tilt / 换轨）共用同一组参数，
+ * 固有频率一致 → 同时起步、同时到位，整组运动是一个整体。
+ * 阻尼比 = damping / (2·√stiffness) ≈ 1（临界阻尼：最快且不回弹）。
+ */
+const SPRING_K = 46;
+const SPRING_C = 13.6;
+/** 手指拖动时跟手用的弹簧：更紧，延迟小。 */
+const SCRUB_K = 120;
+const SCRUB_C = 21.9;
+
 /** 后轨（左，深青灰）= 偶数序号卡片，前轨（右，暖米白）= 奇数序号卡片。 */
 const state = {
   layout: null,
   presetIndex: INITIAL_PRESET,
   transition: null,
+  scrub: null,
   // 三个状态量：peak 单位 dp，tilt 为原生读数
   peak: PRESETS[INITIAL_PRESET].peak,
   peakV: 0,
@@ -108,7 +122,12 @@ function peakPx(peak) {
 
 function setPreset(next) {
   next = clamp(next, 0, PRESETS.length - 1);
-  if (next === state.presetIndex || !state.layout) return;
+  state.scrub = null;
+  if (next === state.presetIndex || !state.layout) {
+    // 跟手过程中松手但没有切换：弹回当前预设
+    state.transition = { to: PRESETS[state.presetIndex] };
+    return;
+  }
 
   const target = PRESETS[next];
   // 从当前画面与当前速度接续目标，避免切换时重置运动。
@@ -126,15 +145,41 @@ function setPreset(next) {
   updateStatus();
 }
 
+/** 横滑跟手：状态量在「当前预设 → 相邻预设」之间随手指插值。 */
+function swipeMove(dx) {
+  if (!state.layout) return;
+  const dir = dx > 0 ? 1 : -1;
+  const to = clamp(state.presetIndex + dir, 0, PRESETS.length - 1);
+  if (to === state.presetIndex) {
+    // 已经在尽头：不再往外拉，回到当前预设
+    swipeCancel();
+    return;
+  }
+  // 手指走过半屏宽 ≈ 70% 进度；剩下的 30% 留给松手后的弹簧完成
+  const t = clamp(Math.abs(dx) / (state.layout.vw * 0.5), 0, 1) * 0.7;
+  state.scrub = { from: state.presetIndex, to, t };
+}
+
+function swipeCancel() {
+  if (!state.scrub) return;
+  state.scrub = null;
+  state.transition = { to: PRESETS[state.presetIndex] };
+}
+
+function scrubTarget() {
+  const { from, to, t } = state.scrub;
+  const a = PRESETS[from];
+  const b = PRESETS[to];
+  const mix = (x, y) => x + (y - x) * t;
+  return { peak: mix(a.peak, b.peak), curve: mix(a.curve, b.curve), tilt: mix(a.tilt, b.tilt) };
+}
+
 /**
  * 柔和阻尼动力学：降低整体加速度，并为透视倾斜留出更长的收束时间。
  * 半隐式积分并限制子步长，避免高刷新率/掉帧时的数值抖动。
- * 
- * 调整后的默认参数：
- *   - stiffness: 170→140 (更柔和，减小加速度)
- *   - damping: 25→28 (更强阻尼，消除超调)
+ * 默认参数 = 临界阻尼（SPRING_K / SPRING_C）。
  */
-function springStep(value, velocity, target, deltaSeconds, stiffness = 140, damping = 28) {
+function springStep(value, velocity, target, deltaSeconds, stiffness = SPRING_K, damping = SPRING_C) {
   let remaining = Math.max(0, deltaSeconds);
   while (remaining > 0) {
     const dt = Math.min(remaining, 1 / 120);
@@ -237,6 +282,8 @@ attachGestures(stage, {
   getSide: (x) => sideAt(x),
   isBlocked: () => false,
   onPresetStep: (dir) => setPreset(state.presetIndex + dir),
+  onSwipeMove: (dx) => swipeMove(dx),
+  onSwipeCancel: () => swipeCancel(),
   onDragStart: (side) => {
     state.dragging = side;
     if (side === 0) {
@@ -332,18 +379,22 @@ function frame(now) {
   const fs = dt / 16.667;
 
   // 状态参数使用连续弹簧：快速连续横滑时继承上一段运动速度。
-  // 调整后参数：stiffness↓ damping↑ → 更丝滑、收敛更稳
-  if (state.transition) {
-    const target = state.transition.to;
+  // 三个量共用同一组参数（临界阻尼）→ 同时到位；手指跟手时换成更紧的一组。
+  const scrubbing = Boolean(state.scrub);
+  const target = scrubbing ? scrubTarget() : state.transition?.to;
+  if (target) {
     const seconds = dt / 1000;
-    let p = springStep(state.peak, state.peakV, target.peak, seconds, 52, 15);
-    let c = springStep(state.curve, state.curveV, target.curve, seconds, 48, 14);
-    let r = springStep(state.tilt, state.tiltV, target.tilt, seconds, 30, 11.5);
+    const k = scrubbing ? SCRUB_K : SPRING_K;
+    const c = scrubbing ? SCRUB_C : SPRING_C;
+    const p = springStep(state.peak, state.peakV, target.peak, seconds, k, c);
+    const cv = springStep(state.curve, state.curveV, target.curve, seconds, k, c);
+    const r = springStep(state.tilt, state.tiltV, target.tilt, seconds, k, c);
     state.peak = p.value; state.peakV = p.velocity;
-    state.curve = c.value; state.curveV = c.velocity;
+    state.curve = cv.value; state.curveV = cv.velocity;
     state.tilt = r.value; state.tiltV = r.velocity;
 
     if (
+      !scrubbing &&
       Math.abs(target.peak - state.peak) < 0.08 && Math.abs(state.peakV) < 0.45 &&
       Math.abs(target.curve - state.curve) < 0.015 && Math.abs(state.curveV) < 0.08 &&
       Math.abs(target.tilt - state.tilt) < 0.02 && Math.abs(state.tiltV) < 0.08
@@ -358,7 +409,7 @@ function frame(now) {
   // 第三个状态的双轨换位由同一弹簧驱动；弧线方向跟随轨道位置，
   // 纵向甩动直接取换位速度，因此起落与横向运动自然关联。
   if (state.trackMotion) {
-    const motion = springStep(state.trackShift, state.trackShiftV, state.trackMotion.target, dt / 1000, 42, 13);
+    const motion = springStep(state.trackShift, state.trackShiftV, state.trackMotion.target, dt / 1000);
     state.trackShift = motion.value;
     state.trackShiftV = motion.velocity;
     state.arcDirection = 1 - 2 * state.trackShift;
