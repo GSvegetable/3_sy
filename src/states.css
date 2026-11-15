@@ -106,3 +106,41 @@
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
+
+/* ============================================================
+   同轨卡片分层：同一条轨道的卡片颜色相同、又相互叠压，
+   原来没有投影，边缘融在一起。这里给每张卡
+   ① 竖向渐变（顶亮底暗）② 顶部高光线 + 发丝描边 ③ 向下投射的阴影，
+   上面的卡片会在下一张卡的顶部投下阴影，叠压关系一眼可辨。
+   ============================================================ */
+
+/* 深色轨（左 / 大轨） */
+.stage .card .face.porcelain,
+.stage .card .face.porcelain-back {
+  background: linear-gradient(180deg, #2f3c46 0%, #25313a 50%, #1c252c 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 18px 22px -10px rgba(0, 0, 0, 0.8),
+    0 3px 6px rgba(0, 0, 0, 0.5);
+}
+
+/* 浅色轨（右 / 小轨） */
+.stage .card .face.front:not(.porcelain),
+.stage .card .face.back:not(.porcelain-back) {
+  background: linear-gradient(180deg, #faf8f4 0%, #f2efea 50%, #e3ddd3 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(40, 50, 70, 0.07),
+    0 18px 22px -10px rgba(8, 14, 26, 0.6),
+    0 3px 6px rgba(8, 14, 26, 0.28);
+}
+
+/* 搜索命中高亮（放在最后，保证压过上面的阴影） */
+.stage .card.is-highlighted .face.front,
+.stage .card.is-highlighted .face.back {
+  box-shadow:
+    0 18px 22px -10px rgba(0, 0, 0, 0.7),
+    0 0 0 1.5px rgba(122, 196, 214, 0.85),
+    0 0 26px rgba(90, 170, 200, 0.35);
+}
