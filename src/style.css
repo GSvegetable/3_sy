@@ -371,3 +371,32 @@ body {
 .rail-front { z-index: 2; }
 .card .face { opacity: var(--card-alpha, 1); }
 .card.is-reflowing { transition: transform 0.39s cubic-bezier(0.22, 1, 0.36, 1); }
+
+/* 点击反馈：先轻轻“吸起”，再进入原有翻面弹簧。
+   不改变卡片内容，只给用户一个清晰的触点反馈。 */
+.card.is-highlighted {
+  filter: brightness(calc(1 + var(--focus-pulse, 0) * 0.035));
+}
+
+.card.is-highlighted .inner {
+  filter: drop-shadow(
+    0 calc(8px + var(--focus-pulse, 0) * 7px)
+    calc(18px + var(--focus-pulse, 0) * 10px)
+    rgba(120, 185, 205, calc(0.16 + var(--focus-pulse, 0) * 0.08))
+  );
+}
+
+.card.is-highlighted .face {
+  box-shadow:
+    0 22px 44px -18px rgba(0, 0, 0, 0.58),
+    0 0 calc(8px + var(--focus-pulse, 0) * 10px)
+      rgba(150, 210, 225, calc(0.08 + var(--focus-pulse, 0) * 0.07)),
+    inset 0 0 0 1px rgba(255, 255, 255, calc(0.38 + var(--focus-pulse, 0) * 0.16));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card.is-highlighted .inner,
+  .card.is-highlighted .face {
+    filter: none;
+  }
+}
