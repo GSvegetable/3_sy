@@ -259,13 +259,15 @@ body {
 .copy {
   left: 12%;
   right: 8%;
-  max-width: 80%;
+  /* 只使用左右留白形成的真实内容宽度，不再额外压缩 80%，避免文字区被二次缩窄 */
   overflow: hidden;
 }
 
 .copy h2,
 .copy p {
-  max-width: 100%;
+  display: block;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
