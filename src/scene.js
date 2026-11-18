@@ -274,6 +274,7 @@ export class Scene {
       }
       const highlight =
         view.highlightKey === rec.entityKey && performance.now() < view.highlightUntil ? 1 : 0;
+      const focusPulse = highlight ? (0.5 + 0.5 * Math.sin((performance.now() - (view.highlightUntil - 900)) * 0.012)) : 0;
 
       const x = g.dx;
       const y = g.y - lift - highlight * 8 * layout.u;
@@ -284,7 +285,7 @@ export class Scene {
       const originY = y + trackY + layout.cardH / 2;
       rec.sx = this.projectX(originX, view);
       rec.sy = originY;
-      const scale = g.scale * (1 + elev * 0.12) * (isBack ? 1.06 : 0.96);
+      const scale = g.scale * (1 + elev * 0.12 + highlight * (0.025 + focusPulse * 0.018)) * (isBack ? 1.06 : 0.96);
 
       el.style.transform = `translate3d(${x}px, ${y + trackY}px, 0) scale(${scale})`;
       const cardAlpha = String(g.alpha);
@@ -315,6 +316,7 @@ export class Scene {
           `perspective(${persp}px) translateZ(${zLift}px) rotateY(-8deg) rotateX(${angle}deg)`;
       }
       el.classList.toggle('is-highlighted', highlight === 1);
+      el.style.setProperty('--focus-pulse', highlight ? String(focusPulse) : '0');
     }
 
     // 有卡片悬空的那条轨道整体升到最上面
