@@ -222,13 +222,16 @@ function runSearch(raw) {
   // 两条轨道都是循环的：取与当前位置最近的那一圈
   const period = onBack ? state.layout.backHeight : state.layout.frontHeight;
   const current = onBack ? state.backOffset : state.frontOffset;
+  const searchTarget = nearestCongruent(current, target, period);
+  const wrappedTarget = ((searchTarget % period) + period) % period;
+  const searchCopy = Math.round((searchTarget - (row * step - wrappedTarget)) / period);
   state.searchMotion = {
     side: onBack ? 0 : 1,
     start: current,
-    target: nearestCongruent(current, target, period),
+    target: searchTarget,
     started: performance.now(),
   };
-  state.highlightKey = `${onBack ? 'back' : 'front'}:${Math.round((onBack ? current : current) / period)}:${row}:${index}`;
+  state.highlightKey = `${onBack ? 'back' : 'front'}:${searchCopy}:${row}:${index}`;
   state.highlightUntil = performance.now() + 1600;
 }
 
