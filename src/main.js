@@ -74,7 +74,7 @@ const state = {
   dragging: -1,
   backPointerY: NaN,
   frontPointerY: NaN,
-  highlightIndex: -1,
+  highlightKey: null,
   highlightUntil: 0,
   searchMotion: null,
   lastStepBack: 0,
@@ -207,7 +207,7 @@ function nearestCongruent(current, target, period) {
 function runSearch(raw) {
   const match = findBestMatch(raw);
   if (!match) {
-    state.highlightIndex = -1;
+    state.highlightKey = null;
     return;
   }
   const index = match.index;
@@ -228,7 +228,7 @@ function runSearch(raw) {
     target: nearestCongruent(current, target, period),
     started: performance.now(),
   };
-  state.highlightIndex = index;
+  state.highlightKey = `${onBack ? 'back' : 'front'}:${Math.round((onBack ? current : current) / period)}:${row}:${index}`;
   state.highlightUntil = performance.now() + 1600;
 }
 
@@ -320,7 +320,7 @@ attachGestures(stage, {
     const flipped = scene.toggleFlip(index, side, copy);
     hapticTick(0.65);
     if (flipped) {
-      state.highlightIndex = index;
+      state.highlightKey = `${side === 0 ? 'back' : 'front'}:${copy}:${scene.cards.find((r) => r.index === index && r.side === (side === 0 ? 'back' : 'front') && r.copy === copy)?.row ?? -1}:${index}`;
       state.highlightUntil = performance.now() + 900;
     }
   },
@@ -368,7 +368,7 @@ function buildView() {
     frontSpeed: state.frontVelocity / 55,
     backPointerY: state.backPointerY,
     frontPointerY: state.frontPointerY,
-    highlightIndex: state.highlightIndex,
+    highlightKey: state.highlightKey,
     highlightUntil: state.highlightUntil,
   };
 }
