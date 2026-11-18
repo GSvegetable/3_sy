@@ -58,7 +58,7 @@ export function cardGeometry(layout, params) {
   const s0 = center - focusY;
   const norm = clamp(Math.abs(s0) / maxDist, 0, 1);
   const smooth = Math.cos((norm * Math.PI) / 2);
-  const boost = 0.12 * smooth * smooth * smooth * smooth;
+  const boost = 0.04 * smooth * smooth * smooth * smooth;
 
   // 拖拽时以指针为轴做拉伸位移（原生：speed × 70dp）
   const pointer = Number.isFinite(pointerY) ? pointerY : center;
@@ -80,7 +80,8 @@ export function cardGeometry(layout, params) {
   return {
     dx,
     y: cy - cardH / 2,
-    scale: 0.75 + 0.32 * smooth + boost,
+    // 远端卡片保持约 88% 基础尺寸，中心约 108%；远近差更柔和。
+    scale: 0.88 + 0.16 * smooth + boost,
     alpha,
     smooth,
   };
