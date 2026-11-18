@@ -6,8 +6,8 @@
 
 /** 原生尺寸基准（dp） */
 export const DP = {
-  CARD_W: 150,
-  CARD_H: 132,
+  CARD_W: 180,
+  CARD_H: 120,
   STEP: 72,
   GAP: -24,
   PAD: 58,
