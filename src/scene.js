@@ -85,7 +85,7 @@ export class Scene {
 
     // 顺序变化时记录旧卡片的屏幕位置，让空位由相邻卡片平滑补上。
     const previous = new Map(this.cards.map((rec) => [
-      `${rec.side}:${rec.copy}:${rec.index}`,
+      rec.entityKey,
       { transform: rec.el.style.transform },
     ]));
     this.railBack.innerHTML = '';
@@ -97,7 +97,7 @@ export class Scene {
       for (let copy = -copies; copy <= copies; copy += 1) {
         order.forEach((index, row) => {
           const rec = this.createCard(index, side, copy, row);
-          const old = previous.get(`${side}:${copy}:${index}`);
+          const old = previous.get(`${side}:${copy}:${row}:${index}`);
           if (old?.transform) {
             rec.el.style.transform = old.transform;
             rec.el.classList.add('is-reflowing');
@@ -124,7 +124,8 @@ export class Scene {
     el.dataset.side = side;
     el.dataset.row = String(row);
     el.innerHTML = this.cardMarkup(card, side);
-    return { el, index, side, copy, row, card, flipKey: `${side}:${copy}:${index}` };
+    const entityKey = `${side}:${copy}:${row}:${index}`;
+    return { el, index, side, copy, row, card, entityKey, flipKey: entityKey };
   }
 
   cardMarkup(card, side) {
@@ -272,7 +273,7 @@ export class Scene {
         else frontActive = true;
       }
       const highlight =
-        view.highlightIndex === rec.index && performance.now() < view.highlightUntil ? 1 : 0;
+        view.highlightKey === rec.entityKey && performance.now() < view.highlightUntil ? 1 : 0;
 
       const x = g.dx;
       const y = g.y - lift - highlight * 8 * layout.u;
