@@ -241,6 +241,46 @@ body {
 /* ------------------------------------------------------- 上下黑色渐隐：彻底移除，避免 3D 堆叠上下文遮挡文字 */
 /* .stage::before, .stage::after { display: none; } */
 
+/* ------------------------------------------------------------ 卡片文字安全区 */
+/*
+ * 文字保护层：
+ * 卡片本体通过 JS 的 scale() 做整体同比例缩放，文字会随卡片一起缩放。
+ * 这里额外限制每个文字区域的可用宽度，避免长标题/副标题突破卡片边界。
+ * 不给 .face 设置 overflow:hidden，避免破坏 3D 翻面。
+ */
+
+.eyebrow {
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy {
+  left: 12%;
+  right: 8%;
+  max-width: 80%;
+  overflow: hidden;
+}
+
+.copy h2,
+.copy p {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy h2 {
+  /* 标题字号仍由卡片基准尺寸决定，并随外层 scale() 同步缩放。 */
+  font-size: calc(var(--card-w, 150px) * 0.173);
+}
+
+.copy p {
+  /* 副标题同样随卡片整体缩放，不允许突破安全区。 */
+  font-size: calc(var(--card-w, 150px) * 0.06);
+}
+
 /* ------------------------------------------------------------ 状态字 */
 
 .status {
